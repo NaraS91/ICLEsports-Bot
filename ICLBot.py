@@ -3,11 +3,19 @@
 import os
 import discord
 import random
+import asyncio
+from datetime import datetime
+from datetime import timezone
 from dotenv import load_dotenv
 
 load_dotenv()
 
 TOKEN = os.getenv('DISCORD_TOKEN')
+LOL_COMMUNITY_GAMES_ID = os.getenv('LOL_COMMUNITY_GAMES_ID')
+LOL1 = os.getenv("LOL1")
+LOL2 = os.getenv("LOL2")
+LOL3 = os.getenv("LOL3")
+
 client = discord.Client()
 
 default_prefix = '!'
@@ -52,9 +60,26 @@ async def roll_roles(args, text_channel):
        await text_channel.send('not enough players')
     else:
         for i in range(5):
-            message += f'{args[i]}: {roles[i]}, '
-        await text_channel.send(message[:-2])
-        
+            message += f'{args[i]}: {roles[i]}\n'
+        await text_channel.send(message[:-1])
+
+async def remind():
+    await client.wait_until_ready()
+    while True:
+        now = datetime.now(timezone.utc)
+        time_str = now.strftime('%H:%M')
+        weekday = now.weekday()
+        print(weekday)
+        print(time_str)
+        if weekday == 4:
+            if time_str == '10:00':
+                channel = client.get_channel(int(LOL_COMMUNITY_GAMES_ID))
+                await channel.send(f'<@{int(LOL1)}> <@{int(LOL2)}> <@{int(LOL3)}>'
+                                   + '\n IT\'S FRIDAY :)')
+        await asyncio.sleep(58)
+
+
 commands = {'help': help, 'roll_roles': roll_roles}
 
+client.loop.create_task(remind())
 client.run(TOKEN)
