@@ -4,6 +4,10 @@ import os
 import discord
 import random
 import asyncio
+import time
+import giphy_client
+from giphy_client.rest import ApiException
+from pprint import pprint
 from datetime import datetime
 from datetime import timezone
 from dotenv import load_dotenv
@@ -15,6 +19,13 @@ LOL_COMMUNITY_GAMES_ID = os.getenv('LOL_COMMUNITY_GAMES_ID')
 LOL1 = os.getenv("LOL1")
 LOL2 = os.getenv("LOL2")
 LOL3 = os.getenv("LOL3")
+
+#gify settings
+api_instance = giphy_client.DefaultApi()
+api_key = os.getenv("GIFY_KEY")
+tag = 'anime'
+rating = 'g' # str | Filters results by specified rating. (optional)
+fmt = 'json' # str | Used to indicate the expected response format. Default is Json. (optional) (default to json)
 
 client = discord.Client()
 
@@ -63,14 +74,20 @@ async def roll_roles(args, text_channel):
             message += f'{args[i]}: {roles[i]}\n'
         await text_channel.send(message[:-1])
 
+async def anime(args, text_channel):
+    try: 
+        # Search Endpoint
+        api_response = api_instance.gifs_random_get(api_key, tag = "anime", rating='g', fmt=fmt)
+        await text_channel.send(api_response.data.url)
+    except ApiException as e:
+        print("Exception when calling DefaultApi->gifs_search_get: %s\n" % e)
+
 async def remind():
     await client.wait_until_ready()
     while True:
         now = datetime.now(timezone.utc)
         time_str = now.strftime('%H:%M')
         weekday = now.weekday()
-        print(weekday)
-        print(time_str)
         if weekday == 4:
             if time_str == '10:00':
                 channel = client.get_channel(int(LOL_COMMUNITY_GAMES_ID))
@@ -79,7 +96,7 @@ async def remind():
         await asyncio.sleep(58)
 
 
-commands = {'help': help, 'roll_roles': roll_roles}
+commands = {'help': help, 'roll_roles': roll_roles, 'anime': anime}
 
 client.loop.create_task(remind())
 client.run(TOKEN)
