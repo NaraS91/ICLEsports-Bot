@@ -37,8 +37,8 @@ MAIN_GUILD_ID = os.getenv("MAIN_GUILD_ID")
 api_instance = giphy_client.DefaultApi()
 api_key = os.getenv("GIFY_KEY")
 tag = 'anime'
-rating = 'g' # str | Filters results by specified rating. (optional)
-fmt = 'json' # str | Used to indicate the expected response format. Default is Json. (optional) (default to json)
+rating = 'g' # age raiting of gify searcg
+fmt = 'json' # response format
 
 @client.event
 async def on_ready():
@@ -52,6 +52,7 @@ async def on_message(message):
     if message.type == discord.MessageType.default:
         prefix = default_prefix
 
+        #dm messages
         if message.channel.type is discord.ChannelType.private:
             await check_dm(message.content, message)
             return
@@ -62,10 +63,12 @@ async def on_message(message):
         if message.content.startswith(prefix):
             await check_command(message.content[1:], message)
 
+
 #argument is a message without the prefix
 async def check_command(message_content, message):
     if (message_content.split()[0] in commands):
         await commands[message_content.split()[0]](message_content.split()[1:], message)
+
 
 async def check_dm(message_content, message):
     if (message_content.split()[0] in dm_commands):
@@ -78,6 +81,7 @@ async def help(args, message):
 
 
 #expects array of strings
+#randomly assigns league roles to given players (5 first strings from args)
 async def roll_roles(args, message):
     roles = ['top', 'jungle', 'mid', 'adc', 'supp']
     random.shuffle(roles)
@@ -91,6 +95,8 @@ async def roll_roles(args, message):
             answer += f'{args[i]}: {roles[i]}\n'
         await message.channel.send(answer[:-1])
 
+
+#sends a random anime giff from gify 
 async def anime(args, message):
     try: 
         # Search Endpoint
@@ -99,12 +105,15 @@ async def anime(args, message):
     except ApiException as e:
         print("Exception when calling DefaultApi->gifs_random_get: %s\n" % e)
 
+
+#reminds about certain dates periodically
 async def remind():
     await client.wait_until_ready()
     while True:
         now = datetime.now(timezone.utc)
-        time_str = now.strftime('%H:%M')
+        time_str = now.strftime('%H:%M') #times_str is a string in format HH:MM
         weekday = now.weekday()
+
         if weekday == 4:
             if time_str == '10:00':
                 channel = client.get_channel(int(LOL_COMMUNITY_GAMES_ID))
@@ -112,11 +121,13 @@ async def remind():
                                    + '\n IT\'S FRIDAY :)')
         await asyncio.sleep(58)
 
+#dms message author with further instructions
 async def register(args, message):
-    await message.author.send("To get the membership role please writea message in format:\
-                              \nregister yourShortcodeHere \n i.e register nkm2020" )
+    await message.author.send("To get the membership role please write a message in format:\
+                              \nregister yourShortcodeHere \ni.e register nkm2020" )
         
 
+#checks if message has at least one argument and forwards it to check_membership
 async def dm_register(args, message):
     if len(args) > 0:
         await check_membership(args[0], message)
@@ -124,12 +135,15 @@ async def dm_register(args, message):
         await message.author.send("please use the correct format of answear")
 
 
+#gives membership role to a student (shortcode) with valid membership
 async def check_membership(shortcode, message):
+    #response contains all students with a valid membership
     resp = requests.get(f'{UNION_API_ENDPOINT}/CSP/{CENTRE_CODE}/reports/members',
     auth=(SOCIETY_API_KEY, SOCIETY_API_KEY))
 
     role_assigned = False
     
+    #checks if API response is without error
     if resp.status_code == 200:
         for member in resp.json():
             if member['Login'] == shortcode:
@@ -138,11 +152,13 @@ async def check_membership(shortcode, message):
         if role_assigned:
             await message.author.send("role was assigned successfully")
         else:
-            await message.author.send("could not find your membership, it's available to buy here: https://www.imperialcollegeunion.org/activities/a-to-z/esports \
-                                    \nif you have already bought the membership try again later or contact any committee member")
+            await message.author.send("Could not find your membership, it's available to buy here: https://www.imperialcollegeunion.org/activities/a-to-z/esports \
+                                    \nIf you have already bought the membership try again later or contact any committee member")
     else:
         print(resp.status_code)
 
+
+#gives message author role coresponding to MEMBERSHIP_ROLE_ID 
 async def give_role(message):
     main_guild = client.get_guild(int(MAIN_GUILD_ID))
     mem_role = main_guild.get_role(int(MEMBERSHIP_ROLE_ID))
