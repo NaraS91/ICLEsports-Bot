@@ -22,14 +22,16 @@ client = discord.Client()
 default_prefix = '!'
 prefixes = {}
 
-TOKEN = os.getenv('DISCORD_TOKEN')
+TOKEN = os.getenv('DISCORD_TOKEN_TEST')
 LOL_COMMUNITY_GAMES_ID = os.getenv('LOL_COMMUNITY_GAMES_ID')
 LOL1 = os.getenv("LOL1")
 LOL2 = os.getenv("LOL2")
 LOL3 = os.getenv("LOL3")
 SOCIETY_API_KEY = os.getenv("SOCIETY_API_KEY")
+SOCIETY_API_KEY2 = os.getenv("SOCIETY_API_KEY2")
 UNION_API_ENDPOINT = os.getenv("UNION_API_ENDPOINT")
 CENTRE_CODE = os.getenv("CENTRE_CODE")
+CENTRE_CODE2 = os.getenv("CENTRE_CODE2")
 MEMBERSHIP_ROLE_ID = os.getenv("MEMBERSHIP_ROLE_ID")
 MAIN_GUILD_ID = os.getenv("MAIN_GUILD_ID")
 
@@ -139,7 +141,12 @@ async def dm_register(args, message):
 async def check_membership(shortcode, message):
     #response contains all students with a valid membership
     resp = requests.get(f'{UNION_API_ENDPOINT}/CSP/{CENTRE_CODE}/reports/members',
-    auth=(SOCIETY_API_KEY, SOCIETY_API_KEY))
+      auth = (SOCIETY_API_KEY, SOCIETY_API_KEY))
+
+    #2nd society members
+    resp2 = requests.get(f'{UNION_API_ENDPOINT}/CSP/{CENTRE_CODE2}/reports/members',
+      auth = (SOCIETY_API_KEY2, SOCIETY_API_KEY2))
+
 
     role_assigned = False
     
@@ -149,13 +156,22 @@ async def check_membership(shortcode, message):
             if member['Login'] == shortcode:
                 role_assigned = True
                 await give_role(message)
-        if role_assigned:
-            await message.author.send("role was assigned successfully")
-        else:
-            await message.author.send("Could not find your membership, it's available to buy here: https://www.imperialcollegeunion.org/activities/a-to-z/esports \
-                                    \nIf you have already bought the membership try again later or contact any committee member")
     else:
-        print(resp.status_code)
+        print("worng status code soc1")
+
+    if (not role_assigned) and resp2.status_code == 200:
+        for member in resp2.json():
+            if member['Login'] == shortcode:
+                role_assigned = True
+                await give_role(message)
+    else:
+        print("worng status code soc2")
+        
+    if role_assigned:
+        await message.author.send("role was assigned successfully")
+    else:
+        await message.author.send("Could not find your membership, it's available to buy here: https://www.imperialcollegeunion.org/activities/a-to-z/esports \
+                                \nIf you have already bought the membership try again later or contact any committee member")
 
 
 #gives message author role coresponding to MEMBERSHIP_ROLE_ID 
