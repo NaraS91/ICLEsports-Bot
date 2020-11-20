@@ -97,6 +97,17 @@ async def roll_roles(args, message):
             answer += f'{args[i]}: {roles[i]}\n'
         await message.channel.send(answer[:-1])
 
+#role one fo the league roles for you
+async def roll_role(args, message):
+    roles = ['top', 'jungle', 'mid', 'adc', 'supp']
+    random.shuffle(roles)
+
+    await message.channel.send(f'your role is {roles[0]}!')
+
+#flips coin and send the result to chat
+async def flip_coin(args, message):
+    flip_result = "head!" if random.randint(0, 1) == 0 else "tail!"
+    await message.channel.send(flip_result)
 
 #sends a random anime giff from gify 
 async def anime(args, message):
@@ -184,7 +195,7 @@ async def give_role(message):
 
 
 
-commands = {'help': help, 'roll_roles': roll_roles, 'anime': anime, 'register': register}
+commands = {'help': help, 'roll_roles': roll_roles, 'anime': anime, 'register': register, 'flip': flip_coin, "roll_role": roll_role}
 dm_commands = {'register': dm_register}
 
 client.loop.create_task(remind())
