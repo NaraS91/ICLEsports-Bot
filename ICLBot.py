@@ -22,7 +22,7 @@ client = discord.Client()
 default_prefix = '!'
 prefixes = {}
 
-TOKEN = os.getenv('DISCORD_TOKEN_TEST')
+TOKEN = os.getenv('DISCORD_TOKEN')
 LOL_COMMUNITY_GAMES_ID = os.getenv('LOL_COMMUNITY_GAMES_ID')
 LOL1 = os.getenv("LOL1")
 LOL2 = os.getenv("LOL2")
@@ -103,6 +103,46 @@ async def roll_role(args, message):
     random.shuffle(roles)
 
     await message.channel.send(f'your role is {roles[0]}!')
+
+async def create_teams(args, message):
+
+    if (len(args) % 2 == 1):
+        await message.channel.send('number of players has to be even.')
+        return
+
+    if (len(args) == 0):
+        await message.channel.send('teams cannot be empty, write some nicks after the command')
+
+    random.shuffle(args)
+    response = 'Team 1: '
+
+    for i in range(len(args) // 2):
+        response += f'{args[i]} '
+
+    response += '\nTeam 2: '
+
+    for i in range(len(args) // 2, len(args)):
+        response += f'{args[i]} '
+
+    await message.channel.send(response)
+
+
+async def create_teams_vc(args, message):
+    authorsVCState = message.author.voice
+
+    if authorsVCState == None:
+        await message.channel.send("Join a voice chat to use this command :)")
+        return
+    
+    voiceChat = authorsVCState.channel
+
+    if authorsVCState == None:
+        await message.channel.send("Join a voice chat to use this command :)")
+        return
+    
+    voiceMembers = voiceChat.members
+    voiceMembersNicks = list(map(lambda member: str(member), voiceMembers))
+    await create_teams(voiceMembersNicks, message)
 
 #flips coin and send the result to chat
 async def flip_coin(args, message):
@@ -195,7 +235,8 @@ async def give_role(message):
 
 
 
-commands = {'help': help, 'roll_roles': roll_roles, 'anime': anime, 'register': register, 'flip': flip_coin, "roll_role": roll_role}
+commands = {'help': help, 'roll_roles': roll_roles, 'anime': anime, 'register': register, \
+     'flip': flip_coin, "roll_role": roll_role, 'create_teams' : create_teams, "create_teams_vc" : create_teams_vc}
 dm_commands = {'register': dm_register}
 
 client.loop.create_task(remind())
