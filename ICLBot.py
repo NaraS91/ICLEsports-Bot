@@ -22,7 +22,7 @@ client = discord.Client()
 default_prefix = '!'
 prefixes = {}
 
-TOKEN = os.getenv('DISCORD_TOKEN')
+TOKEN = os.getenv('DISCORD_TOKEN_TEST')
 LOL_COMMUNITY_GAMES_ID = os.getenv('LOL_COMMUNITY_GAMES_ID')
 LOL1 = os.getenv("LOL1")
 LOL2 = os.getenv("LOL2")
@@ -32,8 +32,10 @@ SOCIETY_API_KEY2 = os.getenv("SOCIETY_API_KEY2")
 UNION_API_ENDPOINT = os.getenv("UNION_API_ENDPOINT")
 CENTRE_CODE = os.getenv("CENTRE_CODE")
 CENTRE_CODE2 = os.getenv("CENTRE_CODE2")
-MEMBERSHIP_ROLE_ID = os.getenv("MEMBERSHIP_ROLE_ID")
-MAIN_GUILD_ID = os.getenv("MAIN_GUILD_ID")
+MEMBERSHIP_ROLE_ID = os.getenv("TEST_ROLE")
+MAIN_GUILD_ID = os.getenv("TEST_GUILD_ID")
+
+intents = discord.Intents(messages = True, guilds = True, members = True)
 
 #gify settings
 api_instance = giphy_client.DefaultApi()
@@ -207,16 +209,12 @@ async def check_membership(shortcode, message):
             if member['Login'] == shortcode:
                 role_assigned = True
                 await give_role(message)
-    else:
-        print("worng status code soc1")
 
     if (not role_assigned) and resp2.status_code == 200:
         for member in resp2.json():
             if member['Login'] == shortcode:
                 role_assigned = True
                 await give_role(message)
-    else:
-        print("worng status code soc2")
         
     if role_assigned:
         await message.author.send("role was assigned successfully")
@@ -229,7 +227,7 @@ async def check_membership(shortcode, message):
 async def give_role(message):
     main_guild = client.get_guild(int(MAIN_GUILD_ID))
     mem_role = main_guild.get_role(int(MEMBERSHIP_ROLE_ID))
-    member = main_guild.get_member(message.author.id)
+    member = await main_guild.fetch_member(message.author.id)
     await member.add_roles(mem_role)
 
 
