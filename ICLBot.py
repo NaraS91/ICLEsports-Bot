@@ -163,6 +163,22 @@ async def anime(args, message):
     except ApiException as e:
         print("Exception when calling DefaultApi->gifs_random_get: %s\n" % e)
 
+#creates a poll
+async def create_poll(args, message):
+    args = message.content.splitlines()[1:]
+    if len(args) > 10 or len(args) < 2:
+        await message.channel.send("wrong number od argumetns")
+        return
+        
+    response = [args[0]]
+    numbers = ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine"]
+    emojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣']
+    for i in range(0, len(args) - 1):
+        response.append(f':{numbers[i]}: {args[i+1]}')
+
+    message = await message.channel.send('\n'.join(response))
+    for i in range(0, len(args) - 1):
+        await message.add_reaction(emojis[i])
 
 #reminds about certain dates periodically
 async def remind():
@@ -237,7 +253,8 @@ async def give_role(message):
 
 
 commands = {'help': help, 'roll_roles': roll_roles, 'anime': anime, 'register': register, \
-     'flip': flip_coin, "roll_role": roll_role, 'create_teams' : create_teams, "create_teams_vc" : create_teams_vc}
+     'flip': flip_coin, "roll_role": roll_role, 'create_teams': create_teams, \
+      "create_teams_vc": create_teams_vc, 'poll': create_poll}
 dm_commands = {'register': dm_register}
 
 client.loop.create_task(remind())
