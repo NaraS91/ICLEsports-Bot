@@ -142,8 +142,11 @@ async def create_teams_vc(args, message):
         await message.channel.send("Join a voice chat to use this command :)")
         return
     
-    voiceMembers = voiceChat.members
-    voiceMembersNicks = list(map(lambda member: str(member), voiceMembers))
+    voiceMembersIds = voiceChat.voice_states.keys()
+    voiceMembersNicks = []
+    for memberId in voiceMembersIds:
+        member = await client.fetch_user(memberId)
+        voiceMembersNicks.append(member.name)
     await create_teams(voiceMembersNicks, message)
 
 #flips coin and send the result to chat
