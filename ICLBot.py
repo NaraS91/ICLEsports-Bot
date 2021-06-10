@@ -7,6 +7,7 @@ import asyncio
 import time
 import giphy_client
 import requests
+from utils.league_utils import extract_champions
 from discord.utils import get
 from discord import Member
 from giphy_client.rest import ApiException
@@ -44,8 +45,12 @@ tag = 'anime'
 rating = 'g' # age raiting of gify searcg
 fmt = 'json' # response format
 
+league_champions = list()
+
+
 @client.event
 async def on_ready():
+    league_champions = extract_champions()
     print(f'{client.user} has connected to Discord!')
 
 @client.event
@@ -106,8 +111,26 @@ async def roll_role(args, message):
 
     await message.channel.send(f'your role is {roles[0]}!')
 
-async def create_teams(args, message):
+async def random_champions(args, message):
+    renew_champions()
+    if not args[0].isnumeric():
+        await message.channel.send(f'first argument must be a number indicating number of random champions')
+        return
+    
+    num = int(args[0])
 
+    if num > len(league_champions):
+        await message.channel.send(f'there aren\'t that many champions in league ._.')
+        return
+    
+    if num < 1:
+        await message.channel.send(f'._.')
+        return
+
+    await message.channel.send(random.sample(league_champions, num))
+
+
+async def create_teams(args, message):
     if (len(args) % 2 == 1):
         await message.channel.send('number of players has to be even.')
         return
@@ -249,12 +272,15 @@ async def give_role(message):
     member = await main_guild.fetch_member(message.author.id)
     await member.add_roles(mem_role)
 
-
-
+def renew_champions():
+    global league_champions
+    champs = extract_champions()
+    if len(champs) > len(league_champions):
+        league_champions = champs
 
 commands = {'help': help, 'roll_roles': roll_roles, 'anime': anime, 'register': register, \
      'flip': flip_coin, "roll_role": roll_role, 'create_teams': create_teams, \
-      "create_teams_vc": create_teams_vc, 'poll': create_poll}
+      "create_teams_vc": create_teams_vc, 'poll': create_poll, 'random_champions': random_champions}
 dm_commands = {'register': dm_register}
 
 client.loop.create_task(remind())
