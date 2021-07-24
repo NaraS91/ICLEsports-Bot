@@ -21,3 +21,4 @@ jobs:
           app_name: "iclge-bot"
           email: "m.kaszlewicz@gmail.com"
           dockerfile_path: ${{env.working-directory}}
+          formation: "worker"
