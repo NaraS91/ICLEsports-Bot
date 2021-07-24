@@ -8,6 +8,7 @@ import time
 import giphy_client
 import re
 import requests
+import tweepy
 from utils.league_utils import extract_champions
 from discord.utils import get
 from discord import Member
@@ -17,31 +18,45 @@ from datetime import datetime
 from datetime import timezone
 from dotenv import load_dotenv
 
-load_dotenv()
+class StreamListener(tweepy.StreamListener):
+    def __init__(self, channel):
+        super(StreamListener, self).__init__()
+        self.channel = channel
+
+    def on_status(self, tweet):
+        client.loop.create_task(tweet_to_discord(tweet, self.channel))
+
+    def on_error(self, status_code):
+        if status_code == 420:
+            return False
 
 client = discord.Client()
 
 default_prefix = '!'
 prefixes = {}
 
-TOKEN = os.getenv('DISCORD_TOKEN_TEST')
-LOL_COMMUNITY_GAMES_ID = os.getenv('LOL_COMMUNITY_GAMES_ID')
-LOL1 = os.getenv("LOL1")
-LOL2 = os.getenv("LOL2")
-LOL3 = os.getenv("LOL3")
-SOCIETY_API_KEY = os.getenv("SOCIETY_API_KEY")
-SOCIETY_API_KEY2 = os.getenv("SOCIETY_API_KEY2")
-UNION_API_ENDPOINT = os.getenv("UNION_API_ENDPOINT")
-CENTRE_CODE = os.getenv("CENTRE_CODE")
-CENTRE_CODE2 = os.getenv("CENTRE_CODE2")
-MEMBERSHIP_ROLE_ID = os.getenv("TEST_ROLE")
-MAIN_GUILD_ID = os.getenv("TEST_GUILD_ID")
+load_dotenv()
+
+TOKEN = os.environ.get('DISCORD_TOKEN_TEST')
+SOCIETY_API_KEY = os.environ.get("SOCIETY_API_KEY")
+SOCIETY_API_KEY2 = os.environ.get("SOCIETY_API_KEY2")
+UNION_API_ENDPOINT = os.environ.get("UNION_API_ENDPOINT")
+CENTRE_CODE = os.environ.get("CENTRE_CODE")
+CENTRE_CODE2 = os.environ.get("CENTRE_CODE2")
+MEMBERSHIP_ROLE_ID = os.environ.get("TEST_ROLE")
+MAIN_GUILD_ID = os.environ.get("TEST_GUILD_ID")
+TWEET_CHAT_ID = os.environ.get("TWEET_CHAT_ID")
+TWITTER_APP_KEY = os.environ.get("TWITTER_APP_KEY")
+TWITTER_APP_SECRET = os.environ.get("TWITTER_APP_SECRET")
+TWITTER_KEY = os.environ.get("TWITTER_KEY")
+TWITTER_SECRET = os.environ.get("TWITTER_SECRET")
+TWITTER_TO_FOLLOW = os.environ.get("TWITTER_TO_FOLLOW")
 
 intents = discord.Intents(messages=True, guilds=True, members=True)
 
 # gify settings
 api_instance = giphy_client.DefaultApi()
-api_key = os.getenv("GIFY_KEY")
+api_key = os.environ.get("GIFY_KEY")
 tag = 'anime'
 rating = 'g'  # age raiting of gify searcg
 fmt = 'json'  # response format
@@ -52,6 +67,10 @@ league_champions = list()
 @client.event
 async def on_ready():
     league_champions = extract_champions()
+    channel = client.get_channel(int(TWEET_CHAT_ID))
+    twitter_listener = StreamListener(channel)
+    stream = tweepy.Stream(auth=twitter_api.auth, listener=twitter_listener)
+    stream.filter(follow=[TWITTER_TO_FOLLOW], is_async=True)
     print(f'{client.user} has connected to Discord!')
 
 
@@ -229,12 +248,6 @@ async def remind():
         # times_str is a string in format HH:MM
         time_str = now.strftime('%H:%M')
         weekday = now.weekday()
-
-        if weekday == 4:
-            if time_str == '10:00':
-                channel = client.get_channel(int(LOL_COMMUNITY_GAMES_ID))
-                await channel.send(f'<@{int(LOL1)}> <@{int(LOL2)}> <@{int(LOL3)}>'
-                                   + '\n IT\'S FRIDAY :)')
         await asyncio.sleep(58)
 
 # dms message author with further instructions
@@ -292,6 +305,9 @@ async def give_role(message):
     member = await main_guild.fetch_member(message.author.id)
     await member.add_roles(mem_role)
 
+async def tweet_to_discord(tweet, channel):
+    await channel.send(f'[twitter](https://www.twitter.com/twitter/statuses/{tweet.id})')
+
 
 def renew_champions():
     global league_champions
@@ -318,6 +334,11 @@ commands = {'help': help, 'roll_roles': roll_roles, 'anime': anime, 'register': 
             'flip': flip_coin, "roll_role": roll_role, 'create_teams': create_teams,
             "create_teams_vc": create_teams_vc, 'poll': create_poll, 'random_champions': random_champions}
 dm_commands = {'register': dm_register}
+
+
+twitter_auth = tweepy.OAuthHandler(TWITTER_APP_KEY, TWITTER_APP_SECRET)
+twitter_auth.set_access_token(TWITTER_KEY, TWITTER_SECRET)
+twitter_api = tweepy.API(twitter_auth)
 
 client.loop.create_task(remind())
 client.run(TOKEN)
