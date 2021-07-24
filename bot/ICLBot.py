@@ -37,7 +37,7 @@ prefixes = {}
 
 load_dotenv()
 
-TOKEN = os.environ.get('DISCORD_TOKEN_TEST')
+TOKEN = os.environ.get('DISCORD_TOKEN')
 SOCIETY_API_KEY = os.environ.get("SOCIETY_API_KEY")
 SOCIETY_API_KEY2 = os.environ.get("SOCIETY_API_KEY2")
 UNION_API_ENDPOINT = os.environ.get("UNION_API_ENDPOINT")
