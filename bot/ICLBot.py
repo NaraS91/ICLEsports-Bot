@@ -306,7 +306,7 @@ async def give_role(message):
     await member.add_roles(mem_role)
 
 async def tweet_to_discord(tweet, channel):
-    await channel.send(f'[twitter](https://www.twitter.com/twitter/statuses/{tweet.id})')
+    await channel.send(f'[twitter](https://www.twitter.com/{tweet.user.screen_name}/status/{tweet.id})')
 
 
 def renew_champions():
