@@ -70,7 +70,7 @@ async def on_ready():
     channel = client.get_channel(int(TWEET_CHAT_ID))
     twitter_listener = StreamListener(channel)
     stream = tweepy.Stream(auth=twitter_api.auth, listener=twitter_listener)
-    stream.filter(follow=[TWITTER_TO_FOLLOW], is_async=True)
+    stream.filter(follow=[TWITTER_TO_FOLLOW], is_async=True, )
     print(f'{client.user} has connected to Discord!')
 
 
@@ -306,7 +306,8 @@ async def give_role(message):
     await member.add_roles(mem_role)
 
 async def tweet_to_discord(tweet, channel):
-    await channel.send(f'[twitter](https://www.twitter.com/{tweet.user.screen_name}/status/{tweet.id})')
+    if tweet.user.screen_name == TWITTER_TO_FOLLOW:
+        await channel.send(f'https://www.twitter.com/{tweet.user.screen_name}/status/{tweet.id}')
 
 
 def renew_champions():
