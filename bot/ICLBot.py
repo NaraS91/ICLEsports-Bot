@@ -197,15 +197,11 @@ async def create_teams_vc(args, message):
     await create_teams(voiceMembersNicks, message)
 
 # flips coin and send the result to chat
-
-
 async def flip_coin(args, message):
     flip_result = "head!" if random.randint(0, 1) == 0 else "tail!"
     await message.channel.send(flip_result)
 
 # sends a random anime giff from gify
-
-
 async def anime(args, message):
     try:
         # Search Endpoint
@@ -216,8 +212,6 @@ async def anime(args, message):
         print("Exception when calling DefaultApi->gifs_random_get: %s\n" % e)
 
 # creates a poll
-
-
 async def create_poll(args, message):
     args = message.content.splitlines()[1:]
     for i in range(len(args)):
@@ -239,8 +233,6 @@ async def create_poll(args, message):
         await message.add_reaction(emojis[i])
 
 # reminds about certain dates periodically
-
-
 async def remind():
     await client.wait_until_ready()
     while True:
@@ -250,20 +242,22 @@ async def remind():
         weekday = now.weekday()
         await asyncio.sleep(58)
 
+
+async def dm_help(args, message):
+    await message.author.send("To get the membership role please write a message in format:\
+                              \nregister yourShortcodeHere \ni.e register nkm2021")
+
 # dms message author with further instructions
-
-
 async def register(args, message):
     await message.author.send("To get the membership role please write a message in format:\
                               \nregister yourShortcodeHere \ni.e register nkm2020")
-
 
 # checks if message has at least one argument and forwards it to check_membership
 async def dm_register(args, message):
     if len(args) > 0:
         await check_membership(args[0], message)
     else:
-        await message.author.send("please use the correct format of answear")
+        await message.author.send("Wrong format. Try:registre your-shortcode-goes-here")
 
 
 # gives membership role to a student (shortcode) with valid membership
@@ -334,7 +328,7 @@ def find_roles(guild, text):
 commands = {'help': help, 'roll_roles': roll_roles, 'anime': anime, 'register': register,
             'flip': flip_coin, "roll_role": roll_role, 'create_teams': create_teams,
             "create_teams_vc": create_teams_vc, 'poll': create_poll, 'random_champions': random_champions}
-dm_commands = {'register': dm_register}
+dm_commands = {'register': dm_register, 'help': dm_help}
 
 
 twitter_auth = tweepy.OAuthHandler(TWITTER_APP_KEY, TWITTER_APP_SECRET)
