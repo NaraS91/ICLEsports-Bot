@@ -97,6 +97,8 @@ async def on_message(message):
 
 @client.event
 async def on_raw_reaction_add(payload):
+    print(role_menu_channels)
+    print(payload)
     channel_id = payload.channel_id
     message_id = payload.message_id
     if channel_id != ROLE_MENU_CHANNEL:
