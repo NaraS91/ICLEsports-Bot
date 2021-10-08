@@ -51,6 +51,7 @@ TWITTER_APP_SECRET = os.environ.get("TWITTER_APP_SECRET")
 TWITTER_KEY = os.environ.get("TWITTER_KEY")
 TWITTER_SECRET = os.environ.get("TWITTER_SECRET")
 TWITTER_TO_FOLLOW = os.environ.get("TWITTER_TO_FOLLOW")
+ROLE_MENU_CHANNEL = int(os.environ.get("ROLE_MENU_CHANNEL"))
 
 intents = discord.Intents(messages=True, guilds=True, members=True)
 
@@ -71,6 +72,7 @@ async def on_ready():
     twitter_listener = StreamListener(channel)
     stream = tweepy.Stream(auth=twitter_api.auth, listener=twitter_listener)
     stream.filter(follow=[TWITTER_TO_FOLLOW], is_async=True)
+    await load_role_menus()
     print(f'{client.user} has connected to Discord!')
 
 
@@ -93,6 +95,65 @@ async def on_message(message):
         if message.content.startswith(prefix):
             await check_command(message.content[1:], message)
 
+@client.event
+async def on_raw_reaction_add(payload):
+    channel_id = payload.channel_id
+    message_id = payload.message_id
+    if channel_id != ROLE_MENU_CHANNEL:
+        return
+    role_menus = role_menu_channels[channel_id]
+    if message_id in role_menus:
+        role_menu = role_menus[message_id]
+        roles = role_menu[payload.emoji.name]
+        guild = await client.fetch_guild(payload.guild_id)
+        user = await guild.fetch_member(payload.user_id)
+        for role_mention in roles:
+            role_id = int(role_mention[3:-1])
+            role = discord.utils.get(guild.roles, id=role_id)
+            if role == None or user == None:
+                return
+            await user.add_roles(role)
+
+@client.event
+async def on_raw_reaction_remove(payload):
+    channel_id = payload.channel_id
+    message_id = payload.message_id
+    if channel_id != ROLE_MENU_CHANNEL:
+        return
+    role_menus = role_menu_channels[channel_id]
+    if message_id in role_menus:
+        role_menu = role_menus[message_id]
+        roles = role_menu[payload.emoji.name]
+        guild = await client.fetch_guild(payload.guild_id)
+        user = await guild.fetch_member(payload.user_id)
+        for role_mention in roles:
+            role_id = int(role_mention[3:-1])
+            role = discord.utils.get(guild.roles, id=role_id)
+            if role == None or user == None:
+                return
+            await user.remove_roles(role)
+
+async def load_role_menus():
+    channel = await client.fetch_channel(ROLE_MENU_CHANNEL)
+    async for message in channel.history():
+        if message.author == client.user:
+            if message.content.startswith("ROLE MENU"):
+                load_role_menu(message)
+            
+def load_role_menu(message):
+    id = message.id
+    lines = message.content.splitlines()
+    role_menu = {}
+
+    for line in lines:
+        words = line.split()
+        if len(words) < 2:
+            continue
+        if words[0][-1] == ':':
+            emoji = words[0][:-1]
+            role_menu[emoji] = words[1:]
+    
+    role_menu_channels[message.channel.id][message.id] = role_menu
 
 # argument is a message without the prefix
 async def check_command(message_content, message):
@@ -218,7 +279,7 @@ async def create_poll(args, message):
       args[i] = find_roles(message.guild, args[i])
       
     if len(args) > 10 or len(args) < 2:
-        await message.channel.send("wrong number od argumetns")
+        await message.channel.send("wrong number of argumetns")
         return
 
     response = [args[0]]
@@ -231,6 +292,51 @@ async def create_poll(args, message):
     message = await message.channel.send('\n'.join(response))
     for i in range(0, len(args) - 1):
         await message.add_reaction(emojis[i])
+
+async def create_role_menu(args, message):
+    lines = message.content.splitlines()[1:]
+    
+    if message.channel.id != ROLE_MENU_CHANNEL:
+        await message.channel.send("this is not the role menu channel.")
+        return
+
+    role_menus = role_menu_channels[message.channel.id]
+    description = ""
+    rolesIndex = 0
+
+    if lines[0].startswith("\"\"\""):
+        for i in range(len(lines) - 1):
+            if lines[i+1].startswith("\"\"\""):
+                rolesIndex = i + 2
+                break
+            description += lines[i+1] + "\n"
+    
+    if rolesIndex >= len(lines):
+        await message.channel.send("wrong format. Either description quotes \"\"\" are missing or no roles where ")
+        return
+
+    role_menu = {}
+    roles_response = ""
+    for line in lines[rolesIndex:]:
+        words = line.split()
+        if len(words) == 0:
+            continue
+
+        if len(words) < 2:
+            await message.channel.send("roles were not specified.")
+            return
+
+        role_menu[words[0]] = words [1:]
+        roles_response += words[0] + ": " + ' '.join(words[1:]) + '\n'
+
+    response = "ROLE MENU" + '\n' + description + roles_response
+    message = await message.channel.send(response)
+
+    role_menus[message.id] = role_menu
+
+    for emote in role_menu:
+        await message.add_reaction(emote)
+        
 
 # reminds about certain dates periodically
 async def remind():
@@ -327,9 +433,10 @@ def find_roles(guild, text):
 
 commands = {'help': help, 'roll_roles': roll_roles, 'anime': anime, 'register': register,
             'flip': flip_coin, "roll_role": roll_role, 'create_teams': create_teams,
-            "create_teams_vc": create_teams_vc, 'poll': create_poll, 'random_champions': random_champions}
+            "create_teams_vc": create_teams_vc, 'poll': create_poll, 'random_champions': random_champions,
+            'role_menu': create_role_menu}
 dm_commands = {'register': dm_register, 'help': dm_help}
-
+role_menu_channels = {ROLE_MENU_CHANNEL: {}}
 
 twitter_auth = tweepy.OAuthHandler(TWITTER_APP_KEY, TWITTER_APP_SECRET)
 twitter_auth.set_access_token(TWITTER_KEY, TWITTER_SECRET)
