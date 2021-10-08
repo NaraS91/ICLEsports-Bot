@@ -106,9 +106,13 @@ async def on_raw_reaction_add(payload):
     role_menus = role_menu_channels[channel_id]
     if message_id in role_menus:
         role_menu = role_menus[message_id]
-        roles = role_menu[payload.emoji.name]
         guild = await client.fetch_guild(payload.guild_id)
         user = await guild.fetch_member(payload.user_id)
+        roles = []
+        if payload.emoji.id == None:
+            roles = role_menu[payload.emoji.name]
+        else:
+            roles = await guild.fetch_emoji(payload.emoji.id)
         for role_mention in roles:
             role_id = int(role_mention[3:-1])
             role = discord.utils.get(guild.roles, id=role_id)
@@ -125,9 +129,13 @@ async def on_raw_reaction_remove(payload):
     role_menus = role_menu_channels[channel_id]
     if message_id in role_menus:
         role_menu = role_menus[message_id]
-        roles = role_menu[payload.emoji.name]
         guild = await client.fetch_guild(payload.guild_id)
         user = await guild.fetch_member(payload.user_id)
+        roles = []
+        if payload.emoji.id == None:
+            roles = role_menu[payload.emoji.name]
+        else:
+            roles = await guild.fetch_emoji(payload.emoji.id)
         for role_mention in roles:
             role_id = int(role_mention[3:-1])
             role = discord.utils.get(guild.roles, id=role_id)
