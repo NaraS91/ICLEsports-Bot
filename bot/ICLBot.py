@@ -112,7 +112,8 @@ async def on_raw_reaction_add(payload):
         if payload.emoji.id == None:
             roles = role_menu[payload.emoji.name]
         else:
-            roles = await guild.fetch_emoji(payload.emoji.id)
+            emoji = await guild.fetch_emoji(payload.emoji.id)
+            roles = role_menu[f'<:{emoji.name}:{emoji.id}>']
         for role_mention in roles:
             role_id = int(role_mention[3:-1])
             role = discord.utils.get(guild.roles, id=role_id)
@@ -135,7 +136,8 @@ async def on_raw_reaction_remove(payload):
         if payload.emoji.id == None:
             roles = role_menu[payload.emoji.name]
         else:
-            roles = await guild.fetch_emoji(payload.emoji.id)
+            emoji = await guild.fetch_emoji(payload.emoji.id)
+            roles = role_menu[f'<:{emoji.name}:{emoji.id}>']
         for role_mention in roles:
             role_id = int(role_mention[3:-1])
             role = discord.utils.get(guild.roles, id=role_id)
