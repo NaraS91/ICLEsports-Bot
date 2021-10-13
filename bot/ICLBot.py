@@ -345,6 +345,7 @@ async def create_team_category(args, message):
     await category.create_text_channel("resources")
     await category.create_text_channel("clips")
     await category.create_voice_channel("voice")
+    await message.channel.send(f"Category is ready")
     
 
 async def create_roles(args, message):
@@ -352,12 +353,13 @@ async def create_roles(args, message):
     
     for arg in args:
         await guild.create_role(name=arg)
+    message.channel.send(f"Roles have been created successfully")
 
 async def create_role_menu(args, message):
     lines = message.content.splitlines()[1:]
     
     if message.channel.id != ROLE_MENU_CHANNEL:
-        await message.channel.send("this is not the role menu channel.")
+        await message.channel.send("this is not the role menu channel")
         return
 
     role_menus = role_menu_channels[message.channel.id]
