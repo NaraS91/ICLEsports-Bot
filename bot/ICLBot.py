@@ -151,7 +151,7 @@ async def load_role_menus():
         if message.author == client.user:
             if message.content.startswith("ROLE MENU"):
                 load_role_menu(message)
-            
+        
 def load_role_menu(message):
     id = message.id
     lines = message.content.splitlines()
@@ -170,8 +170,28 @@ def load_role_menu(message):
 # argument is a message without the prefix
 async def check_command(message_content, message):
     if (message_content.split()[0] in commands):
-        await commands[message_content.split()[0]](message_content.split()[1:], message)
+        await commands[message_content.split()[0]](fetch_arguments(message_content), message)
+    elif (message_content.split()[0] in admin_commands):
+        guild = message.guild
+        if message.author.guild_permissions.administrator:
+            await admin_commands[message_content.split()[0]](fetch_arguments(message_content), message)
+        else:
+            await message.channel.send("You have no power in here")
 
+def fetch_arguments(message_content):
+    quote_split = message_content.split('"')
+    
+    args = quote_split[0].split()[1:]
+    for i in range(1, len(quote_split)):
+        if i % 2 == 0:
+            if quote_split[i].strip() != "":
+                args.extend(quote_split[i].split())
+        else:
+            args.append(quote_split[i])
+
+    return args
+
+        
 
 async def check_dm(message_content, message):
     if (message_content.split()[0] in dm_commands):
@@ -199,8 +219,6 @@ async def roll_roles(args, message):
         await message.channel.send(answer[:-1])
 
 # role one fo the league roles for you
-
-
 async def roll_role(args, message):
     roles = ['top', 'jungle', 'mid', 'adc', 'supp']
     random.shuffle(roles)
@@ -304,6 +322,36 @@ async def create_poll(args, message):
     message = await message.channel.send('\n'.join(response))
     for i in range(0, len(args) - 1):
         await message.add_reaction(emojis[i])
+
+async def create_team_category(args, message):
+    if len(args) < 2:
+        await message.channel.send("wrong number of arguments")
+        return
+    guild = message.guild
+
+    role_id = int(args[1][3:-1])
+    role = discord.utils.get(guild.roles, id=role_id)
+    if role == None:
+        await message.channel.send(f"role with {role_id} id does not exist")
+        return
+    
+    overwrites = {
+        guild.default_role: discord.PermissionOverwrite(read_messages=False),
+        role: discord.PermissionOverwrite(read_messages=True),
+    }
+    
+    category = await guild.create_category(args[0], overwrites=overwrites)
+    await category.create_text_channel("general")
+    await category.create_text_channel("resources")
+    await category.create_text_channel("clips")
+    await category.create_voice_channel("voice")
+    
+
+async def create_roles(args, message):
+    guild = message.guild
+    
+    for arg in args:
+        await guild.create_role(name=arg)
 
 async def create_role_menu(args, message):
     lines = message.content.splitlines()[1:]
@@ -448,6 +496,7 @@ commands = {'help': help, 'roll_roles': roll_roles, 'anime': anime, 'register': 
             "create_teams_vc": create_teams_vc, 'poll': create_poll, 'random_champions': random_champions,
             'role_menu': create_role_menu}
 dm_commands = {'register': dm_register, 'help': dm_help}
+admin_commands = {'create_team_category': create_team_category, "create_roles": create_roles}
 role_menu_channels = {ROLE_MENU_CHANNEL: {}}
 
 twitter_auth = tweepy.OAuthHandler(TWITTER_APP_KEY, TWITTER_APP_SECRET)
