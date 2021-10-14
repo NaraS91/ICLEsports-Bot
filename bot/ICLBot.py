@@ -97,8 +97,6 @@ async def on_message(message):
 
 @client.event
 async def on_raw_reaction_add(payload):
-    print(role_menu_channels)
-    print(payload)
     channel_id = payload.channel_id
     message_id = payload.message_id
     if channel_id != ROLE_MENU_CHANNEL:
@@ -302,6 +300,53 @@ async def anime(args, message):
     except ApiException as e:
         print("Exception when calling DefaultApi->gifs_random_get: %s\n" % e)
 
+async def create_raffle(args, message):
+    if len(args) < 1:
+        await message.channel.send("emote not specified!")
+        return
+
+    lines = message.content.splitlines()[1:]
+
+    if len(lines) > 0 and lines[0].startswith("\"\"\""):
+        response = await message.channel.send('RAFFLE\n' + '\n'.join(lines[1:-1]))
+    else:
+        response = await message.channel.send("RAFFLE")
+    
+    await response.add_reaction(args[0])
+
+
+async def end_raffle(args, message):
+    channel = message.channel
+
+    if len(args) < 1 or not args[0].isnumeric():
+        await channel.send("Number of winners not specified smh")
+        return
+
+    async for message in channel.history(limit=50):
+        if message.author == client.user:
+            if message.content.startswith("RAFFLE"):
+                await announce_raffle_winners(message, int(args[0]))
+                return
+
+async def announce_raffle_winners(raffle_message, no_winners):
+    if len(raffle_message.reactions) < 1:
+        await raffle_message.channel.send("No reaction detected 😠")
+        return
+    
+    raffle_reaction = raffle_message.reactions[0]
+    for reaction in raffle_message.reactions[1:]:
+        raffle_users = await raffle_reaction.users().flatten()
+        possible_users = await reaction.users().flatten()
+        if len(possible_users) > len(raffle_users):
+            raffle_reaction = reaction
+
+    await raffle_reaction.remove(client.user)
+    candidates = await raffle_reaction.users().flatten()
+
+    winners = random.sample(candidates, no_winners)
+
+    await raffle_message.channel.send("Raffle winners are: " + ' '.join(map(lambda w:  w.mention, winners)) + "!!!!")
+
 # creates a poll
 async def create_poll(args, message):
     args = message.content.splitlines()[1:]
@@ -496,7 +541,7 @@ def find_roles(guild, text):
 commands = {'help': help, 'roll_roles': roll_roles, 'anime': anime, 'register': register,
             'flip': flip_coin, "roll_role": roll_role, 'create_teams': create_teams,
             "create_teams_vc": create_teams_vc, 'poll': create_poll, 'random_champions': random_champions,
-            'role_menu': create_role_menu}
+            'role_menu': create_role_menu, 'raffle': create_raffle, 'raffle_result': end_raffle}
 dm_commands = {'register': dm_register, 'help': dm_help}
 admin_commands = {'create_team_category': create_team_category, "create_roles": create_roles}
 role_menu_channels = {ROLE_MENU_CHANNEL: {}}
