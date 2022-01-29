@@ -198,7 +198,7 @@ async def check_dm(message_content, message):
 
 # expects array of strings
 async def help(args, message):
-    await message.channel.send('implemented methods: \n' + ', '.join(commands.keys()))
+    await message.channel.send('available commands: \n' + ', '.join(commands.keys()))
 
 
 # expects array of strings
@@ -398,7 +398,7 @@ async def create_roles(args, message):
     
     for arg in args:
         await guild.create_role(name=arg)
-    message.channel.send(f"Roles have been created successfully")
+    await message.channel.send(f"Roles have been created successfully")
 
 async def create_role_menu(args, message):
     lines = message.content.splitlines()[1:]
