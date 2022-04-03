@@ -9,6 +9,8 @@ import giphy_client
 import re
 import requests
 import tweepy
+import commands.role_menu as rm
+import DiscordClient
 from utils.league_utils import extract_champions
 from discord.utils import get
 from discord import Member
@@ -30,8 +32,6 @@ class StreamListener(tweepy.StreamListener):
         if status_code == 420:
             return False
 
-client = discord.Client()
-
 default_prefix = '!'
 prefixes = {}
 
@@ -45,14 +45,17 @@ CENTRE_CODE = os.environ.get("CENTRE_CODE")
 CENTRE_CODE2 = os.environ.get("CENTRE_CODE2")
 MEMBERSHIP_ROLE_ID = os.environ.get("MEMBERSHIP_ROLE_ID")
 MAIN_GUILD_ID = os.environ.get("MAIN_GUILD_ID")
+ROLE_MENU_CHANNEL = int(os.environ.get("ROLE_MENU_CHANNEL"))
+REDIS_URL = os.environ.get("REDIS_URL")
 TWEET_CHAT_ID = os.environ.get("TWEET_CHAT_ID")
 TWITTER_APP_KEY = os.environ.get("TWITTER_APP_KEY")
 TWITTER_APP_SECRET = os.environ.get("TWITTER_APP_SECRET")
 TWITTER_KEY = os.environ.get("TWITTER_KEY")
 TWITTER_SECRET = os.environ.get("TWITTER_SECRET")
 TWITTER_TO_FOLLOW = os.environ.get("TWITTER_TO_FOLLOW")
-ROLE_MENU_CHANNEL = int(os.environ.get("ROLE_MENU_CHANNEL"))
+SELF_PROMO = os.environ.get("SELF_PROMO")
 
+client = DiscordClient.DicordClient(ROLE_MENU_CHANNEL, REDIS_URL)
 intents = discord.Intents(messages=True, guilds=True, members=True)
 
 # gify settings
@@ -72,7 +75,7 @@ async def on_ready():
     twitter_listener = StreamListener(channel)
     stream = tweepy.Stream(auth=twitter_api.auth, listener=twitter_listener)
     stream.filter(follow=[TWITTER_TO_FOLLOW], is_async=True)
-    await load_role_menus()
+    await rm.load_role_menus(client, ROLE_MENU_CHANNEL)
     print(f'{client.user} has connected to Discord!')
 
 
@@ -84,6 +87,10 @@ async def on_message(message):
     if message.type == discord.MessageType.default:
         prefix = default_prefix
 
+        if message.channel.id in special_channels:
+            await special_channels[message.channel.id](message.content, message)
+            return
+
         # dm messages
         if message.channel.type is discord.ChannelType.private:
             await check_dm(message.content, message)
@@ -94,76 +101,6 @@ async def on_message(message):
 
         if message.content.startswith(prefix):
             await check_command(message.content[1:], message)
-
-@client.event
-async def on_raw_reaction_add(payload):
-    channel_id = payload.channel_id
-    message_id = payload.message_id
-    if channel_id != ROLE_MENU_CHANNEL:
-        return
-    role_menus = role_menu_channels[channel_id]
-    if message_id in role_menus:
-        role_menu = role_menus[message_id]
-        guild = await client.fetch_guild(payload.guild_id)
-        user = await guild.fetch_member(payload.user_id)
-        roles = []
-        if payload.emoji.id == None:
-            roles = role_menu[payload.emoji.name]
-        else:
-            emoji = await guild.fetch_emoji(payload.emoji.id)
-            roles = role_menu[f'<:{emoji.name}:{emoji.id}>']
-        for role_mention in roles:
-            role_id = int(role_mention[3:-1])
-            role = discord.utils.get(guild.roles, id=role_id)
-            if role == None or user == None:
-                return
-            await user.add_roles(role)
-
-@client.event
-async def on_raw_reaction_remove(payload):
-    channel_id = payload.channel_id
-    message_id = payload.message_id
-    if channel_id != ROLE_MENU_CHANNEL:
-        return
-    role_menus = role_menu_channels[channel_id]
-    if message_id in role_menus:
-        role_menu = role_menus[message_id]
-        guild = await client.fetch_guild(payload.guild_id)
-        user = await guild.fetch_member(payload.user_id)
-        roles = []
-        if payload.emoji.id == None:
-            roles = role_menu[payload.emoji.name]
-        else:
-            emoji = await guild.fetch_emoji(payload.emoji.id)
-            roles = role_menu[f'<:{emoji.name}:{emoji.id}>']
-        for role_mention in roles:
-            role_id = int(role_mention[3:-1])
-            role = discord.utils.get(guild.roles, id=role_id)
-            if role == None or user == None:
-                return
-            await user.remove_roles(role)
-
-async def load_role_menus():
-    channel = await client.fetch_channel(ROLE_MENU_CHANNEL)
-    async for message in channel.history():
-        if message.author == client.user:
-            if message.content.startswith("ROLE MENU"):
-                load_role_menu(message)
-        
-def load_role_menu(message):
-    id = message.id
-    lines = message.content.splitlines()
-    role_menu = {}
-
-    for line in lines:
-        words = line.split()
-        if len(words) < 2:
-            continue
-        if words[0][-1] == ':':
-            emoji = words[0][:-1]
-            role_menu[emoji] = words[1:]
-    
-    role_menu_channels[message.channel.id][message.id] = role_menu
 
 # argument is a message without the prefix
 async def check_command(message_content, message):
@@ -391,59 +328,37 @@ async def create_team_category(args, message):
     await category.create_text_channel("clips")
     await category.create_voice_channel("voice")
     await message.channel.send(f"Category is ready")
+
+async def give_promotions_permission(args, message):
+    if len(args) < 1:
+        await message.channel.send("wrong number of arguments")
+        return
     
+    await client.db.append("allowed", args[0])
+    await message.channel.send("premission given")
+
+async def remove_promotions_permission(args, message):
+    if len(args) < 1:
+        await message.channel.send("wrong number of arguments")
+        return
+    
+    await client.db.remove("allowed", args[0])
+    await message.channel.send("premission removed")
+
+async def clear_promotions_permissions(args, message):
+    await client.db.clear("allowed")
+    await message.channel.send("cleared permissions")
+
+async def show_promotions_permissions(args, message):
+    perms = await client.db.get("allowed")
+    await message.channel.send(perms)
 
 async def create_roles(args, message):
     guild = message.guild
     
     for arg in args:
         await guild.create_role(name=arg)
-    await message.channel.send(f"Roles have been created successfully")
-
-async def create_role_menu(args, message):
-    lines = message.content.splitlines()[1:]
-    
-    if message.channel.id != ROLE_MENU_CHANNEL:
-        await message.channel.send("this is not the role menu channel")
-        return
-
-    role_menus = role_menu_channels[message.channel.id]
-    description = ""
-    rolesIndex = 0
-
-    if lines[0].startswith("\"\"\""):
-        for i in range(len(lines) - 1):
-            if lines[i+1].startswith("\"\"\""):
-                rolesIndex = i + 2
-                break
-            description += lines[i+1] + "\n"
-    
-    if rolesIndex >= len(lines):
-        await message.channel.send("wrong format. Either description quotes \"\"\" are missing or no roles where ")
-        return
-
-    role_menu = {}
-    roles_response = ""
-    for line in lines[rolesIndex:]:
-        words = line.split()
-        if len(words) == 0:
-            continue
-
-        if len(words) < 2:
-            await message.channel.send("roles were not specified.")
-            return
-
-        role_menu[words[0]] = words [1:]
-        roles_response += words[0] + ": " + ' '.join(words[1:]) + '\n'
-
-    response = "ROLE MENU" + '\n' + description + roles_response
-    message = await message.channel.send(response)
-
-    role_menus[message.id] = role_menu
-
-    for emote in role_menu:
-        await message.add_reaction(emote)
-        
+    await message.channel.send(f"Roles have been created successfully")        
 
 # reminds about certain dates periodically
 async def remind():
@@ -537,14 +452,27 @@ def find_roles(guild, text):
   
   return new_text
 
+async def self_promo_commands(content, message):
+    author = message.author
+    allowed = await client.db.get("allowed")
+    if not isinstance(author, discord.Member) or \
+       not (str(author.id) in allowed or \
+            int(MEMBERSHIP_ROLE_ID) in list(map(lambda role: role.id, author.roles))):
+        await message.delete()
+        await author.send("Looks like you don't have permission to most in the self promotion channel, please contact one of the admins if you'd like to get permission")
+    else:
+        await message.add_reaction('\N{THUMBS UP SIGN}')
 
 commands = {'help': help, 'roll_roles': roll_roles, 'anime': anime, 'register': register,
             'flip': flip_coin, "roll_role": roll_role, 'create_teams': create_teams,
             "create_teams_vc": create_teams_vc, 'poll': create_poll, 'random_champions': random_champions,
-            'role_menu': create_role_menu, 'raffle': create_raffle, 'raffle_result': end_raffle}
+            'role_menu': rm.create_role_menu, 'raffle': create_raffle, 'raffle_result': end_raffle}
 dm_commands = {'register': dm_register, 'help': dm_help}
-admin_commands = {'create_team_category': create_team_category, "create_roles": create_roles}
-role_menu_channels = {ROLE_MENU_CHANNEL: {}}
+admin_commands = {'create_team_category': create_team_category, "create_roles": create_roles,
+                   "give_perms": give_promotions_permission, "remove_perms": remove_promotions_permission,
+                   "clear_perms": clear_promotions_permissions, "show_perms": show_promotions_permissions}
+
+special_channels = {int(SELF_PROMO): self_promo_commands}
 
 twitter_auth = tweepy.OAuthHandler(TWITTER_APP_KEY, TWITTER_APP_SECRET)
 twitter_auth.set_access_token(TWITTER_KEY, TWITTER_SECRET)
