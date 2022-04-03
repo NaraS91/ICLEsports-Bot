@@ -22,3 +22,4 @@ jobs:
           heroku_email: "m.kaszlewicz@gmail.com"
           usedocker: true
           docker_heroku_process_type: "worker"
+          dontuseforce: 1
