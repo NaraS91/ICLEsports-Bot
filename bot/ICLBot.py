@@ -329,13 +329,38 @@ async def create_team_category(args, message):
     await category.create_voice_channel("voice")
     await message.channel.send(f"Category is ready")
 
+async def remove_categories(args, message):
+    if len(args) < 1:
+        await message.channel.send("specify at least 1 id of a category to delete")
+        return
+    
+    for arg in args:
+        if not arg.isdigit():
+            await message.channel.send(f"{arg} does not represent a valid id")
+        else:
+            category = client.get_channel(int(arg))
+            if not isinstance(category, discord.CategoryChannel):
+                await message.channel.send(f"{arg} does not represent a valid category id")
+            else:
+                for text_channel in category.text_channels:
+                    await text_channel.delete()
+                for voice_channel in category.voice_channels:
+                    await voice_channel.delete()
+                
+                await category.delete()
+                await message.channel.send(f"category with {arg} id was deleted successfully")
+    
+    await message.channel.send("finished deleteing categories")
+
+
+
 async def give_promotions_permission(args, message):
     if len(args) < 1:
         await message.channel.send("wrong number of arguments")
         return
     
     await client.db.append("allowed", args[0])
-    await message.channel.send("premission given")
+    await message.channel.send("permission given")
 
 async def remove_promotions_permission(args, message):
     if len(args) < 1:
@@ -343,7 +368,7 @@ async def remove_promotions_permission(args, message):
         return
     
     await client.db.remove("allowed", args[0])
-    await message.channel.send("premission removed")
+    await message.channel.send("permission removed")
 
 async def clear_promotions_permissions(args, message):
     await client.db.clear("allowed")
@@ -468,7 +493,7 @@ commands = {'help': help, 'roll_roles': roll_roles, 'anime': anime, 'register': 
             "create_teams_vc": create_teams_vc, 'poll': create_poll, 'random_champions': random_champions,
             'role_menu': rm.create_role_menu, 'raffle': create_raffle, 'raffle_result': end_raffle}
 dm_commands = {'register': dm_register, 'help': dm_help}
-admin_commands = {'create_team_category': create_team_category, "create_roles": create_roles,
+admin_commands = {'create_team_category': create_team_category, 'remove_categories': remove_categories, "create_roles": create_roles,
                    "give_perms": give_promotions_permission, "remove_perms": remove_promotions_permission,
                    "clear_perms": clear_promotions_permissions, "show_perms": show_promotions_permissions}
 
