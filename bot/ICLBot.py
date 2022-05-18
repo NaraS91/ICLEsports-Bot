@@ -360,6 +360,7 @@ async def give_promotions_permission(args, message):
         return
     
     await client.db.append("allowed", args[0])
+    await send_dm(args[0], "Permission given. You can post in the promotion channel now")
     await message.channel.send("permission given")
 
 async def remove_promotions_permission(args, message):
@@ -451,6 +452,11 @@ async def give_role(message):
     mem_role = main_guild.get_role(int(MEMBERSHIP_ROLE_ID))
     member = await main_guild.fetch_member(message.author.id)
     await member.add_roles(mem_role)
+
+async def send_dm(id, message):
+    user = client.get_user(id)
+    if user:
+        user.send(message)
 
 async def tweet_to_discord(tweet, channel):
     if tweet.user.id == int(TWITTER_TO_FOLLOW):
