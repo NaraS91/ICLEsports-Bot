@@ -459,7 +459,7 @@ async def give_role(message):
 async def send_dm(id, message):
     user = client.get_user(id)
     if user:
-        user.send(message)
+        await user.send(message)
 
 async def tweet_to_discord(tweet, channel):
     if tweet.user.id == int(TWITTER_TO_FOLLOW):
