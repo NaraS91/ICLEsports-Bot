@@ -359,8 +359,11 @@ async def give_promotions_permission(args, message):
         await message.channel.send("wrong number of arguments")
         return
     
+    if not args[0].isdigit():
+        return
+
     await client.db.append("allowed", args[0])
-    await send_dm(args[0], "Permission given. You can post in the promotion channel now")
+    await send_dm(int(args[0]), "Permission given. You can post in the promotion channel now")
     await message.channel.send("permission given")
 
 async def remove_promotions_permission(args, message):
