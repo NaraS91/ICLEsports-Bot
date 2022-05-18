@@ -457,7 +457,7 @@ async def give_role(message):
     await member.add_roles(mem_role)
 
 async def send_dm(id, message):
-    user = client.get_user(id)
+    user = client.fetch_user(id)
     if user:
         await user.send(message)
 
