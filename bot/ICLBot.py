@@ -16,7 +16,7 @@ from discord.utils import get
 from discord import Member
 from giphy_client.rest import ApiException
 from pprint import pprint
-from datetime import datetime
+from datetime import datetime, timedelta
 from datetime import timezone
 from dotenv import load_dotenv
 
@@ -37,23 +37,24 @@ prefixes = {}
 
 load_dotenv()
 
-TOKEN = os.environ.get('DISCORD_TOKEN')
-SOCIETY_API_KEY = os.environ.get("SOCIETY_API_KEY")
-SOCIETY_API_KEY2 = os.environ.get("SOCIETY_API_KEY2")
-UNION_API_ENDPOINT = os.environ.get("UNION_API_ENDPOINT")
 CENTRE_CODE = os.environ.get("CENTRE_CODE")
 CENTRE_CODE2 = os.environ.get("CENTRE_CODE2")
 MEMBERSHIP_ROLE_ID = os.environ.get("MEMBERSHIP_ROLE_ID")
 MAIN_GUILD_ID = os.environ.get("MAIN_GUILD_ID")
+QUARANTINE_CHANNEL_ID = int(os.environ.get("QUARANTINE_CHANNEL_ID"))
 ROLE_MENU_CHANNEL = int(os.environ.get("ROLE_MENU_CHANNEL"))
 REDIS_URL = os.environ.get("REDIS_URL")
+SELF_PROMO = os.environ.get("SELF_PROMO")
+SOCIETY_API_KEY = os.environ.get("SOCIETY_API_KEY")
+SOCIETY_API_KEY2 = os.environ.get("SOCIETY_API_KEY2")
+TOKEN = os.environ.get('DISCORD_TOKEN')
 TWEET_CHAT_ID = os.environ.get("TWEET_CHAT_ID")
 TWITTER_APP_KEY = os.environ.get("TWITTER_APP_KEY")
 TWITTER_APP_SECRET = os.environ.get("TWITTER_APP_SECRET")
 TWITTER_KEY = os.environ.get("TWITTER_KEY")
 TWITTER_SECRET = os.environ.get("TWITTER_SECRET")
 TWITTER_TO_FOLLOW = os.environ.get("TWITTER_TO_FOLLOW")
-SELF_PROMO = os.environ.get("SELF_PROMO")
+UNION_API_ENDPOINT = os.environ.get("UNION_API_ENDPOINT")
 
 client = DiscordClient.DicordClient(ROLE_MENU_CHANNEL, REDIS_URL)
 intents = discord.Intents(messages=True, guilds=True, members=True)
@@ -87,13 +88,16 @@ async def on_message(message):
     if message.type == discord.MessageType.default:
         prefix = default_prefix
 
-        if message.channel.id in special_channels:
-            await special_channels[message.channel.id](message.content, message)
-            return
-
         # dm messages
         if message.channel.type is discord.ChannelType.private:
             await check_dm(message.content, message)
+            return
+
+        if await filter_message(message):
+            return
+
+        if message.channel.id in special_channels:
+            await special_channels[message.channel.id](message.content, message)
             return
 
         if message.guild in prefixes:
@@ -496,6 +500,28 @@ async def self_promo_commands(content, message):
         await author.send("Looks like you don't have permission to most in the self promotion channel, please contact one of the admins if you'd like to get permission")
     else:
         await message.add_reaction('\N{THUMBS UP SIGN}')
+
+async def filter_message(message):
+    author = message.author
+    joinDate = author.joined_at
+    delta = datetime.now() - joinDate
+    if (delta < timedelta(hours=2) and (len(message.attachments) > 0 or len(message.embeds) or "http" in message.content)):
+        channel = client.get_channel(QUARANTINE_CHANNEL_ID)
+        await channel.send(content=f'author id: {author.id} \n author name: {author.name} \n message:\n {message.content}')
+        if len(message.embeds) > 0:
+            await channel.send(embed= message.embeds[0])
+        if len(message.attachments) > 0:
+            await channel.send(file=await message.attachments[0].to_file())
+        await message.delete()
+        try:
+            await author.send("New users cannot post messages with images and/or link. If the message does not contain them please contact the webmaster.")
+        finally:
+            return True
+    return False
+
+
+
+
 
 commands = {'help': help, 'roll_roles': roll_roles, 'anime': anime, 'register': register,
             'flip': flip_coin, "roll_role": roll_role, 'create_teams': create_teams,
