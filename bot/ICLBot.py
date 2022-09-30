@@ -113,7 +113,10 @@ async def check_command(message_content, message):
     elif (message_content.split()[0] in admin_commands):
         guild = message.guild
         if message.author.guild_permissions.administrator:
-            await admin_commands[message_content.split()[0]](fetch_arguments(message_content), message)
+            if message_content.split()[0] == "add_role":
+                await admin_commands[message_content.split()[0]](fetch_arguments(message_content), message, client)
+            else:
+                await admin_commands[message_content.split()[0]](fetch_arguments(message_content), message)
         else:
             await message.channel.send("You have no power in here")
 
@@ -526,11 +529,12 @@ async def filter_message(message):
 commands = {'help': help, 'roll_roles': roll_roles, 'anime': anime, 'register': register,
             'flip': flip_coin, "roll_role": roll_role, 'create_teams': create_teams,
             "create_teams_vc": create_teams_vc, 'poll': create_poll, 'random_champions': random_champions,
-            'role_menu': rm.create_role_menu, 'raffle': create_raffle, 'raffle_result': end_raffle}
+             'raffle': create_raffle, 'raffle_result': end_raffle}
 dm_commands = {'register': dm_register, 'help': dm_help}
 admin_commands = {'create_team_category': create_team_category, 'remove_categories': remove_categories, "create_roles": create_roles,
                    "give_perms": give_promotions_permission, "remove_perms": remove_promotions_permission,
-                   "clear_perms": clear_promotions_permissions, "show_perms": show_promotions_permissions}
+                   "clear_perms": clear_promotions_permissions, "show_perms": show_promotions_permissions,
+                   'role_menu': rm.create_role_menu, 'add_role': rm.add_role}
 
 special_channels = {int(SELF_PROMO): self_promo_commands}
 

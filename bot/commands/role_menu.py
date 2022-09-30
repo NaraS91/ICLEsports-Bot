@@ -92,6 +92,14 @@ async def create_role_menu(args, message, role_menu_channel_id):
   for emote in role_menu:
       await message.add_reaction(emote)
 
+async def add_role(args, message, client):
+  channel = await client.fetch_channel(message.channel.id)
+  old_message = await channel.fetch_message(args[0])
+  await old_message.edit(content = old_message.content.strip() + "\n" + args[1] + ": " + ' '.join(args[2:]))
+  await old_message.add_reaction(args[1])
+  load_role_menu(old_message)
+  await channel.send("role menu updated")
+
 async def load_role_menus(client, role_menu_channel_id):
   channel = await client.fetch_channel(role_menu_channel_id)
   async for message in channel.history():
