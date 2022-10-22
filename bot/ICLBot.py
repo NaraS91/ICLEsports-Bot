@@ -57,7 +57,6 @@ TWITTER_TO_FOLLOW = os.environ.get("TWITTER_TO_FOLLOW")
 UNION_API_ENDPOINT = os.environ.get("UNION_API_ENDPOINT")
 
 client = DiscordClient.DicordClient(ROLE_MENU_CHANNEL, REDIS_URL)
-intents = discord.Intents(messages=True, guilds=True, members=True)
 
 # gify settings
 api_instance = giphy_client.DefaultApi()
@@ -245,36 +244,41 @@ async def anime(args, message):
         print("Exception when calling DefaultApi->gifs_random_get: %s\n" % e)
 
 async def create_raffle(args, message):
-    if len(args) < 1:
-        await message.channel.send("emote not specified!")
+    if len(args) < 2:
+        await message.channel.send("please specife the raffle id and emote!")
         return
 
     lines = message.content.splitlines()[1:]
 
     if len(lines) > 0 and lines[0].startswith("\"\"\""):
-        response = await message.channel.send('RAFFLE\n' + '\n'.join(lines[1:-1]))
+        response = await message.channel.send(f'RAFFLE {args[0]}\n' + '\n'.join(lines[1:-1]))
     else:
-        response = await message.channel.send("RAFFLE")
+        response = await message.channel.send(f"RAFFLE {args[0]}")
     
-    await response.add_reaction(args[0])
+    await response.add_reaction(args[1])
 
 
-async def end_raffle(args, message):
+async def end_raffle(args, message, is_exclusive = False):
     channel = message.channel
 
-    if len(args) < 1 or not args[0].isnumeric():
-        await channel.send("Number of winners not specified smh")
+    if len(args) < 2 or not args[1].isnumeric():
+        await channel.send("Number of winners or raffle id was not specified! (first id then number of winners)")
         return
 
     async for message in channel.history(limit=50):
         if message.author == client.user:
-            if message.content.startswith("RAFFLE"):
-                await announce_raffle_winners(message, int(args[0]))
+            if message.content.startswith(f"RAFFLE {args[0]}"):
+                await announce_raffle_winners(message, int(args[1]), is_exclusive)
                 return
+    
+    await channel.send(f"No raffle with \"{args[0]}\" id was found")
 
-async def announce_raffle_winners(raffle_message, no_winners):
+async def exclusive_raffle(args, message):
+    await end_raffle(args, message, True)
+
+async def announce_raffle_winners(raffle_message, no_winners, is_exclusive):
     if len(raffle_message.reactions) < 1:
-        await raffle_message.channel.send("No reaction detected 😠")
+        await raffle_message.channel.send("No participants detected")
         return
     
     raffle_reaction = raffle_message.reactions[0]
@@ -285,9 +289,17 @@ async def announce_raffle_winners(raffle_message, no_winners):
             raffle_reaction = reaction
 
     await raffle_reaction.remove(client.user)
-    candidates = await raffle_reaction.users().flatten()
+    candidates: list = await raffle_reaction.users().flatten()
+    if is_exclusive:
+        guild_members = dict()
+        async for member in raffle_message.guild.fetch_members(limit= None):
+            guild_members[member.id] = member
+        candidates = list(filter(lambda x: x.id in guild_members and int(MEMBERSHIP_ROLE_ID) in map(lambda role: role.id, guild_members[x.id].roles), candidates))
+    winners = random.sample(candidates, min(no_winners, len(candidates)))
 
-    winners = random.sample(candidates, no_winners)
+    if len(winners) == 0:
+        await raffle_message.channel.send("No eligble participants detected")
+        return
 
     await raffle_message.channel.send("Raffle winners are: " + ' '.join(map(lambda w:  w.mention, winners)) + "!!!!")
 
@@ -529,7 +541,7 @@ async def filter_message(message):
 commands = {'help': help, 'roll_roles': roll_roles, 'anime': anime, 'register': register,
             'flip': flip_coin, "roll_role": roll_role, 'create_teams': create_teams,
             "create_teams_vc": create_teams_vc, 'poll': create_poll, 'random_champions': random_champions,
-             'raffle': create_raffle, 'raffle_result': end_raffle}
+             'raffle': create_raffle, 'raffle_result': end_raffle, 'members_raffle_result': exclusive_raffle}
 dm_commands = {'register': dm_register, 'help': dm_help}
 admin_commands = {'create_team_category': create_team_category, 'remove_categories': remove_categories, "create_roles": create_roles,
                    "give_perms": give_promotions_permission, "remove_perms": remove_promotions_permission,
