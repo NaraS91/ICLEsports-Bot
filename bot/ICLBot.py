@@ -267,7 +267,7 @@ async def end_raffle(args, message, is_exclusive = False):
 
     async for message in channel.history(limit=50):
         if message.author == client.user:
-            if message.content.startswith(f"RAFFLE {args[0]}"):
+            if message.content.startswith(f"RAFFLE {args[0]}\n"):
                 await announce_raffle_winners(message, int(args[1]), is_exclusive)
                 return
     
