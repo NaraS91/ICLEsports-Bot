@@ -5,7 +5,7 @@ import commands.role_menu as rm
 
 class DicordClient(discord.Client):
   def __init__(self, role_menu_channel_id, redis_url):
-    intents = discord.Intents(messages=True, guilds=True, members=True)
+    intents = discord.Intents(messages=True, guilds=True, members=True, reactions=True)
     super().__init__(intents= intents)
     self.db = dbManager(redis_url)
     self.rm_channel_id = role_menu_channel_id
