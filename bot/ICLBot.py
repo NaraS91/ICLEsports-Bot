@@ -92,11 +92,11 @@ async def on_message(message):
             await check_dm(message.content, message)
             return
 
-        if await filter_message(message):
-            return
-
         if message.channel.id in special_channels:
             await special_channels[message.channel.id](message.content, message)
+            return
+
+        if await filter_message(message):
             return
 
         if message.guild in prefixes:
