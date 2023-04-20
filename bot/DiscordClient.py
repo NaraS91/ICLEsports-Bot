@@ -12,7 +12,7 @@ class DicordClient(discord.Client):
     self.members = dict()
 
   def get_member(self, user_id, guild_id):
-    if user_id in self.members[guild_id]:
+    if guild_id in self.members and user_id in self.members[guild_id]:
       return self.members[guild_id][user_id]
     else:
       return None
