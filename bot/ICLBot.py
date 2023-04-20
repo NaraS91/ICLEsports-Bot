@@ -509,7 +509,7 @@ async def self_promo_commands(content, message):
     author = message.author
     allowed = await client.db.get("allowed")
     if not isinstance(author, discord.Member) or \
-       not (str(author.id) in allowed or \
+       not ((allowed != None and str(author.id) in allowed) or \
             int(MEMBERSHIP_ROLE_ID) in list(map(lambda role: role.id, author.roles))):
         await message.delete()
         await author.send("Looks like you don't have permission to most in the self promotion channel, please contact one of the admins if you'd like to get permission")
