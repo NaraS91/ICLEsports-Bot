@@ -517,7 +517,10 @@ async def self_promo_commands(content, message):
         await message.add_reaction('\N{THUMBS UP SIGN}')
 
 async def filter_message(message):
-    author = message.author
+    author = client.get_member(message.author, message.guild.id)
+    if author == None:
+        await client.update_members(message.guild)
+    author = client.get_member(message.author, message.guild.id)
     joinDate = author.joined_at
     delta = datetime.now() - joinDate
     if (delta < timedelta(hours=2) and (len(message.attachments) > 0 or len(message.embeds) or "http" in message.content)):
