@@ -2,6 +2,6 @@ discord.py==1.7.3
 python-dotenv==0.20.0
 async-timeout
 giphy-client==1.0.0
-requests==2.27.1
+requests==2.31.0
 tweepy==3.10.0
 redis
