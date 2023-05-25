@@ -510,6 +510,7 @@ async def self_promo_commands(content, message):
     allowed = await client.db.get("allowed")
 
     if allowed != None and str(author.id) in allowed:
+        await message.add_reaction('\N{THUMBS UP SIGN}')
         return
     
     if not isinstance(author, discord.Member) or \
