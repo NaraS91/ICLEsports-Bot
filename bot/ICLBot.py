@@ -8,29 +8,16 @@ import time
 import giphy_client
 import re
 import requests
-import tweepy
 import commands.role_menu as rm
-import DiscordClient
+from DiscordClient import DicordClient
 from utils.league_utils import extract_champions
 from discord.utils import get
-from discord import Member
+from discord import Member, app_commands
 from giphy_client.rest import ApiException
 from pprint import pprint
 from datetime import datetime, timedelta
 from datetime import timezone
 from dotenv import load_dotenv
-
-class StreamListener(tweepy.StreamListener):
-    def __init__(self, channel):
-        super(StreamListener, self).__init__()
-        self.channel = channel
-
-    def on_status(self, tweet):
-        client.loop.create_task(tweet_to_discord(tweet, self.channel))
-
-    def on_error(self, status_code):
-        if status_code == 420:
-            return False
 
 default_prefix = '!'
 prefixes = {}
@@ -40,7 +27,7 @@ load_dotenv()
 CENTRE_CODE = os.environ.get("CENTRE_CODE")
 CENTRE_CODE2 = os.environ.get("CENTRE_CODE2")
 MEMBERSHIP_ROLE_ID = os.environ.get("MEMBERSHIP_ROLE_ID")
-MAIN_GUILD_ID = os.environ.get("MAIN_GUILD_ID")
+MAIN_GUILD_ID = int(os.environ.get("MAIN_GUILD_ID"))
 QUARANTINE_CHANNEL_ID = int(os.environ.get("QUARANTINE_CHANNEL_ID"))
 ROLE_MENU_CHANNEL = int(os.environ.get("ROLE_MENU_CHANNEL"))
 REDIS_URL = os.environ.get("REDIS_URL")
@@ -48,15 +35,12 @@ SELF_PROMO = os.environ.get("SELF_PROMO")
 SOCIETY_API_KEY = os.environ.get("SOCIETY_API_KEY")
 SOCIETY_API_KEY2 = os.environ.get("SOCIETY_API_KEY2")
 TOKEN = os.environ.get('DISCORD_TOKEN')
-TWEET_CHAT_ID = os.environ.get("TWEET_CHAT_ID")
-TWITTER_APP_KEY = os.environ.get("TWITTER_APP_KEY")
-TWITTER_APP_SECRET = os.environ.get("TWITTER_APP_SECRET")
-TWITTER_KEY = os.environ.get("TWITTER_KEY")
-TWITTER_SECRET = os.environ.get("TWITTER_SECRET")
-TWITTER_TO_FOLLOW = os.environ.get("TWITTER_TO_FOLLOW")
 UNION_API_ENDPOINT = os.environ.get("UNION_API_ENDPOINT")
 
-client = DiscordClient.DicordClient(ROLE_MENU_CHANNEL, REDIS_URL)
+command_guilds = [discord.Object(id = MAIN_GUILD_ID)]
+
+client = DicordClient(ROLE_MENU_CHANNEL, REDIS_URL)
+admin_tree_commands = []
 
 # gify settings
 api_instance = giphy_client.DefaultApi()
@@ -66,16 +50,13 @@ rating = 'g'  # age raiting of gify searcg
 fmt = 'json'  # response format
 
 league_champions = list()
-
+tree = app_commands.CommandTree(client)
 
 @client.event
 async def on_ready():
     league_champions = extract_champions()
-    channel = client.get_channel(int(TWEET_CHAT_ID))
-    twitter_listener = StreamListener(channel)
-    stream = tweepy.Stream(auth=twitter_api.auth, listener=twitter_listener)
-    stream.filter(follow=[TWITTER_TO_FOLLOW], is_async=True)
     await rm.load_role_menus(client, ROLE_MENU_CHANNEL)
+    await tree.sync(guild = discord.Object(id = MAIN_GUILD_ID))
     print(f'{client.user} has connected to Discord!')
 
 
@@ -146,69 +127,66 @@ async def help(args, message):
 
 # expects array of strings
 # randomly assigns league roles to given players (5 first strings from args)
-async def roll_roles(args, message):
+@tree.command(name = "roll_roles", description="Bot will randomly assign league of legends positions to the given players", guilds=command_guilds)
+async def roll_roles(interaction, user1:str, user2:str, user3:str, user4:str, user5:str):
     roles = ['top', 'jungle', 'mid', 'adc', 'supp']
     random.shuffle(roles)
 
-    answer = ''
+    answer = '\n'.join((f'{user1}: {roles[0]}',
+                        f'{user2}: {roles[1]}',
+                        f'{user3}: {roles[2]}',
+                        f'{user4}: {roles[3]}',
+                        f'{user5}: {roles[4]}'))
 
-    if (len(args) < 5):
-        await message.channel.send('not enough players')
-    else:
-        for i in range(5):
-            answer += f'{args[i]}: {roles[i]}\n'
-        await message.channel.send(answer[:-1])
+    await interaction.response.send_message(answer)
 
 # role one fo the league roles for you
-async def roll_role(args, message):
+@tree.command(name = "roll_role", description="Bot will randomly give you a league position", guilds=command_guilds)
+async def roll_role(interaction):
     roles = ['top', 'jungle', 'mid', 'adc', 'supp']
     random.shuffle(roles)
 
-    await message.channel.send(f'your role is {roles[0]}!')
+    await interaction.response.send_message(f'your role is {roles[0]}!')
 
-
-async def random_champions(args, message):
+@tree.command(name = "random_champions", description="Bot will randomly respond with n random league champions", guilds=command_guilds)
+async def random_champions(interaction, num:int):
     renew_champions()
-    if not args[0].isnumeric():
-        await message.channel.send(f'first argument must be a number indicating number of random champions')
-        return
-
-    num = int(args[0])
 
     if num > len(league_champions):
-        await message.channel.send(f'there aren\'t that many champions in league ._.')
+        await interaction.response.send_message(f'there aren\'t that many champions in league ._.')
         return
 
     if num < 1:
-        await message.channel.send(f'._.')
+        await interaction.response.send_message(f'._.')
         return
 
-    await message.channel.send(random.sample(league_champions, num))
+    await interaction.response.send_message(random.sample(league_champions, num))
 
-
-async def create_teams(args, message):
-    if (len(args) % 2 == 1):
-        await message.channel.send('number of players has to be even.')
+@tree.command(name = "create_teams", description="creates teams from player names divided with space", guilds=command_guilds)
+async def create_teams(interaction, players:str):
+    players = players.split[' ']
+    if (len(players) % 2 == 1):
+        await interaction.response.send_message('number of players has to be even.')
         return
 
-    if (len(args) == 0):
-        await message.channel.send('teams cannot be empty, write some nicks after the command')
+    if (len(players) == 0):
+        await interaction.response.send_message('teams cannot be empty, write some nicks after the command')
 
-    random.shuffle(args)
+    random.shuffle(players)
     response = 'Team 1: '
 
-    for i in range(len(args) // 2):
-        response += f'{args[i]} '
+    for i in range(len(players) // 2):
+        response += f'{players[i]} '
 
     response += '\nTeam 2: '
 
-    for i in range(len(args) // 2, len(args)):
-        response += f'{args[i]} '
+    for i in range(len(players) // 2, len(players)):
+        response += f'{players[i]} '
 
-    await message.channel.send(response)
+    await interaction.response.send_message(response)
 
 
-async def create_teams_vc(args, message):
+async def create_teams_vc_depricated(args, message):
     authorsVCState = message.author.voice
 
     if authorsVCState == None:
@@ -228,24 +206,24 @@ async def create_teams_vc(args, message):
         voiceMembersNicks.append(member.name)
     await create_teams(voiceMembersNicks, message)
 
-# flips coin and send the result to chat
-async def flip_coin(args, message):
+@tree.command(name = "flip_coin", description="flips a coin", guilds=command_guilds)
+async def flip_coin(interaction):
     flip_result = "head!" if random.randint(0, 1) == 0 else "tail!"
-    await message.channel.send(flip_result)
+    await interaction.response.send_message(flip_result)
 
-# sends a random anime giff from gify
-async def anime(args, message):
+@tree.command(name = "anime_giff", description="sends a random anime giff", guilds=command_guilds)
+async def anime(interaction):
     try:
         # Search Endpoint
         api_response = api_instance.gifs_random_get(
             api_key, tag="anime", rating='g', fmt=fmt)
-        await message.channel.send(api_response.data.url)
+        await interaction.response.send_message(api_response.data.url)
     except ApiException as e:
         print("Exception when calling DefaultApi->gifs_random_get: %s\n" % e)
 
 async def create_raffle(args, message):
     if len(args) < 2:
-        await message.channel.send("please specife the raffle id and emote!")
+        await message.channel.send("please specify the raffle id and emote!")
         return
 
     lines = message.content.splitlines()[1:]
@@ -304,36 +282,33 @@ async def announce_raffle_winners(raffle_message, no_winners, is_exclusive):
     await raffle_message.channel.send("Raffle winners are: " + ' '.join(map(lambda w:  w.mention, winners)) + "!!!!")
 
 # creates a poll
-async def create_poll(args, message):
-    args = message.content.splitlines()[1:]
-    for i in range(len(args)):
-      args[i] = find_roles(message.guild, args[i])
+@tree.command(name = "create_poll", description="creates a poll with max 9 options, options should be separated with a comma (,)", guilds=command_guilds)
+async def create_poll(interaction: discord.Interaction, message: str, options:str):
+    options = list(map(lambda s : s.strip(), options.split(',')))
       
-    if len(args) > 10 or len(args) < 2:
-        await message.channel.send("wrong number of argumetns")
+    if len(options) > 10 or len(options) < 1:
+        await interaction.response.send_message("wrong number of options, need to be in set 1-9.")
         return
 
-    response = [args[0]]
-    numbers = ["one", "two", "three", "four",
-               "five", "six", "seven", "eight", "nine"]
+    response = [message]
     emojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣']
-    for i in range(0, len(args) - 1):
-        response.append(f':{numbers[i]}: {args[i+1]}')
+    for i in range(len(options)):
+        response.append(f'{emojis[i]} {options[i]}')
 
-    message = await message.channel.send('\n'.join(response))
-    for i in range(0, len(args) - 1):
+    message = await interaction.channel.send('\n'.join(response))
+    for i in range(len(options)):
         await message.add_reaction(emojis[i])
 
-async def create_team_category(args, message):
-    if len(args) < 2:
-        await message.channel.send("wrong number of arguments")
-        return
-    guild = message.guild
 
-    role_id = int(args[1][3:-1])
+
+#@tree.command(name = "create_team_category", description="creats a nule/nse team category", guilds=command_guilds)
+async def create_team_category(interaction: discord.Interaction, category_name: str, team_role:str):
+    guild = interaction.guild
+
+    role_id = int(team_role[3:-1])
     role = discord.utils.get(guild.roles, id=role_id)
     if role == None:
-        await message.channel.send(f"role with {role_id} id does not exist")
+        await interaction.response.send_message(f"role with {role_id} id does not exist")
         return
     
     overwrites = {
@@ -341,25 +316,30 @@ async def create_team_category(args, message):
         role: discord.PermissionOverwrite(read_messages=True),
     }
     
-    category = await guild.create_category(args[0], overwrites=overwrites)
+    try:
+        category = await guild.create_category(category_name, overwrites=overwrites)
+    except:
+        await interaction.response.send_message(f"Something went wrong during category creation. Make sure the category name is valid.")
+        return
     await category.create_text_channel("general")
     await category.create_text_channel("resources")
     await category.create_text_channel("clips")
     await category.create_voice_channel("voice")
-    await message.channel.send(f"Category is ready")
+    await interaction.response.send_message(f"Category is ready")
 
-async def remove_categories(args, message):
-    if len(args) < 1:
-        await message.channel.send("specify at least 1 id of a category to delete")
-        return
-    
-    for arg in args:
+create_team_category_command = discord.app_commands.Command(name = "create_team_category", description="creats a nule/nse team category", callback=create_team_category)
+create_team_category_command.default_permissions = discord.Permissions()
+create_team_category_command.guild_only = True
+tree.add_command(create_team_category_command, guilds=command_guilds)
+
+async def remove_categories(interaction: discord.Interaction, category_ids: str):    
+    for arg in list(map(lambda s : s.strip(), category_ids.split(' '))):
         if not arg.isdigit():
-            await message.channel.send(f"{arg} does not represent a valid id")
+            await interaction.channel.send(f"{arg} does not represent a valid id")
         else:
             category = client.get_channel(int(arg))
             if not isinstance(category, discord.CategoryChannel):
-                await message.channel.send(f"{arg} does not represent a valid category id")
+                await interaction.channel.send(f"{arg} does not represent a valid category id")
             else:
                 for text_channel in category.text_channels:
                     await text_channel.delete()
@@ -367,77 +347,58 @@ async def remove_categories(args, message):
                     await voice_channel.delete()
                 
                 await category.delete()
-                await message.channel.send(f"category with {arg} id was deleted successfully")
     
-    await message.channel.send("finished deleteing categories")
+    await interaction.response.send_message("finished deleteing categories")
+admin_tree_commands.append(discord.app_commands.Command(name = "remove_team_categories", description="removes nule/nse team categories, ids should be separated with a single space", callback=remove_categories))
 
 
-
-async def give_promotions_permission(args, message):
-    if len(args) < 1:
-        await message.channel.send("wrong number of arguments")
-        return
-    
-    if not args[0].isdigit():
+async def give_promotions_permission(interaction: discord.Interaction, id: str):
+    if not id.isdigit():
+        await interaction.response.send_message("id should be a number")
         return
 
-    await client.db.append("allowed", args[0])
-    await send_dm(int(args[0]), "Permission given. You can post in the promotion channel now")
-    await message.channel.send("permission given")
+    await client.db.append("allowed", id)
+    await interaction.response.send_message("permission given")
+admin_tree_commands.append(discord.app_commands.Command(name = "give_promo_permission", description="allows the user to post in self-promotion", callback=give_promotions_permission))
+  
 
-async def remove_promotions_permission(args, message):
-    if len(args) < 1:
-        await message.channel.send("wrong number of arguments")
+
+async def remove_promotions_permission(interaction: discord.Interaction, id: str):
+    if not id.isdigit():
+        await interaction.response.send_message("id should be a number")
         return
     
-    await client.db.remove("allowed", args[0])
-    await message.channel.send("permission removed")
+    await client.db.remove("allowed", id)
+    await interaction.response.send_message("permission removed")
+admin_tree_commands.append(discord.app_commands.Command(name = "remove_promo_permission", description="removes the user's privillage to post in self-promotion", callback=remove_promotions_permission))
 
-async def clear_promotions_permissions(args, message):
+
+async def clear_promotions_permissions(interaction: discord.Interaction):
     await client.db.clear("allowed")
-    await message.channel.send("cleared permissions")
+    await interaction.response.send_message("cleared permissions")
+admin_tree_commands.append(discord.app_commands.Command(name = "clear_promo_permissions", description="removes all given permissions to post in the self-promo.", callback=clear_promotions_permissions))
 
-async def show_promotions_permissions(args, message):
+
+async def show_promotions_permissions(interaction: discord.Interaction):
     perms = await client.db.get("allowed")
-    await message.channel.send(perms)
+    await interaction.response.send_message(perms)
+admin_tree_commands.append(discord.app_commands.Command(name = "show_promo_permissions", description="show all users with explicit permission given to post in self promo", callback=show_promotions_permissions))
 
-async def create_roles(args, message):
-    guild = message.guild
+def quote_args_to_array(args):
+    return [arg.strip() for arg in args.split('"') if arg.strip() != '']
+
+async def create_roles(interaction: discord.Interaction, role_names:str):
+    guild = interaction.guild
     
-    for arg in args:
+    for arg in quote_args_to_array(role_names):
         await guild.create_role(name=arg)
-    await message.channel.send(f"Roles have been created successfully")        
+    await interaction.response.send_message(f"Roles have been created successfully")        
+admin_tree_commands.append(discord.app_commands.Command(name = "create_roles", description="create roles with given names. Roles should be in a format: '\"role 1\" \"role 2\" \"role 3\"' ", callback=create_roles))
 
-# reminds about certain dates periodically
-async def remind():
-    await client.wait_until_ready()
-    while True:
-        now = datetime.now(timezone.utc)
-        # times_str is a string in format HH:MM
-        time_str = now.strftime('%H:%M')
-        weekday = now.weekday()
-        await asyncio.sleep(58)
-
-
-async def dm_help(args, message):
-    await message.author.send("To get the membership role please write a message in format:\
-                              \nregister yourShortcodeHere \ni.e register nkm2021")
 
 # dms message author with further instructions
-async def register(args, message):
-    await message.author.send("To get the membership role please write a message in format:\
-                              \nregister yourShortcodeHere \ni.e register nkm2020")
-
-# checks if message has at least one argument and forwards it to check_membership
-async def dm_register(args, message):
-    if len(args) > 0:
-        await check_membership(args[0], message)
-    else:
-        await message.author.send("Wrong format. Try:registre your-shortcode-goes-here")
-
-
-# gives membership role to a student (shortcode) with valid membership
-async def check_membership(shortcode, message):
+@tree.command(name = "register", description="register to get a membership role using your uni shortcode", guilds=command_guilds)
+async def register(interaction: discord.Interaction, shortcode: str):
     # response contains all students with a valid membership
     resp = requests.get(f'{UNION_API_ENDPOINT}/CSP/{CENTRE_CODE}/reports/members',
                         auth=(SOCIETY_API_KEY, SOCIETY_API_KEY))
@@ -453,26 +414,26 @@ async def check_membership(shortcode, message):
         for member in resp.json():
             if member['Login'] == shortcode:
                 role_assigned = True
-                await give_role(message)
+                await give_role(interaction.user.id)
 
     if (not role_assigned) and resp2.status_code == 200:
         for member in resp2.json():
             if member['Login'] == shortcode:
                 role_assigned = True
-                await give_role(message)
+                await give_role(interaction.user.id)
 
     if role_assigned:
-        await message.author.send("role was assigned successfully")
+        await interaction.response.send_message("role was assigned successfully")
     else:
-        await message.author.send("Could not find your membership, it's available to buy here: https://www.imperialcollegeunion.org/activities/a-to-z/esports \
+        await interaction.response.send_message("Could not find your membership, it's available to buy here: https://www.imperialcollegeunion.org/activities/a-to-z/gaming-and-esports \
                                 \nIf you have already bought the membership try again later or contact any committee member")
 
 
 # gives message author role coresponding to MEMBERSHIP_ROLE_ID
-async def give_role(message):
-    main_guild = client.get_guild(int(MAIN_GUILD_ID))
+async def give_role(id):
+    main_guild = client.get_guild(MAIN_GUILD_ID)
     mem_role = main_guild.get_role(int(MEMBERSHIP_ROLE_ID))
-    member = await main_guild.fetch_member(message.author.id)
+    member = await main_guild.fetch_member(id)
     await member.add_roles(mem_role)
 
 async def send_dm(id, message):
@@ -480,37 +441,16 @@ async def send_dm(id, message):
     if user:
         await user.send(message)
 
-async def tweet_to_discord(tweet, channel):
-    if tweet.user.id == int(TWITTER_TO_FOLLOW):
-        await channel.send(f'https://twitter.com/{tweet.user.screen_name}/status/{tweet.id}')
-
-
 def renew_champions():
     global league_champions
     champs = extract_champions()
     if len(champs) > len(league_champions):
         league_champions = champs
 
-def find_roles(guild, text):
-  p = re.compile(r'{[^}]*}')
-  roles_iter = p.finditer(text)
-
-  new_text = text
-
-  for match in roles_iter:
-    pot_role = text[match.span()[0] + 1 : match.span()[1] - 1]
-    role = discord.utils.get(guild.roles, name=pot_role)
-    if role != None:
-      new_text = re.sub('{' + pot_role + '}', role.mention, new_text)
-  
-  return new_text
-
 async def self_promo_commands(content, message):
     author = message.author
     allowed = await client.db.get("allowed")
-
     if allowed != None and str(author.id) in allowed:
-        await message.add_reaction('\N{THUMBS UP SIGN}')
         return
     
     if not isinstance(author, discord.Member) or \
@@ -527,7 +467,7 @@ async def filter_message(message):
         await client.update_members(message.guild)
     author = client.get_member(message.author.id, message.guild.id)
     joinDate = author.joined_at
-    delta = datetime.now() - joinDate
+    delta = datetime.utcnow - joinDate
     if (delta < timedelta(hours=2) and (len(message.attachments) > 0 or len(message.embeds) or "http" in message.content)):
         channel = client.get_channel(QUARANTINE_CHANNEL_ID)
         await channel.send(content=f'author id: {author.id} \n author name: {author.name} \n message:\n {message.content}')
@@ -546,21 +486,14 @@ async def filter_message(message):
 
 
 
-commands = {'help': help, 'roll_roles': roll_roles, 'anime': anime, 'register': register,
-            'flip': flip_coin, "roll_role": roll_role, 'create_teams': create_teams,
-            "create_teams_vc": create_teams_vc, 'poll': create_poll, 'random_champions': random_champions,
-             'raffle': create_raffle, 'raffle_result': end_raffle, 'members_raffle_result': exclusive_raffle}
-dm_commands = {'register': dm_register, 'help': dm_help}
-admin_commands = {'create_team_category': create_team_category, 'remove_categories': remove_categories, "create_roles": create_roles,
-                   "give_perms": give_promotions_permission, "remove_perms": remove_promotions_permission,
-                   "clear_perms": clear_promotions_permissions, "show_perms": show_promotions_permissions,
-                   'role_menu': rm.create_role_menu, 'add_role': rm.add_role}
+commands = {'poll': create_poll, 'raffle': create_raffle, 'raffle_result': end_raffle, 'members_raffle_result': exclusive_raffle}
+admin_commands = {'role_menu': rm.create_role_menu, 'add_role': rm.add_role}
 
 special_channels = {int(SELF_PROMO): self_promo_commands}
 
-twitter_auth = tweepy.OAuthHandler(TWITTER_APP_KEY, TWITTER_APP_SECRET)
-twitter_auth.set_access_token(TWITTER_KEY, TWITTER_SECRET)
-twitter_api = tweepy.API(twitter_auth)
+for command in admin_tree_commands:
+    command.default_permissions = discord.Permissions()
+    command.guild_only = True
+    tree.add_command(command, guilds=command_guilds)
 
-client.loop.create_task(remind())
 client.run(TOKEN)
