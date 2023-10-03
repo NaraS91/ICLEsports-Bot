@@ -423,10 +423,10 @@ async def register(interaction: discord.Interaction, shortcode: str):
                 await give_role(interaction.user.id)
 
     if role_assigned:
-        await interaction.response.send_message("role was assigned successfully")
+        await interaction.response.send_message("role was assigned successfully", ephemeral=True)
     else:
         await interaction.response.send_message("Could not find your membership, it's available to buy here: https://www.imperialcollegeunion.org/activities/a-to-z/gaming-and-esports \
-                                \nIf you have already bought the membership try again later or contact any committee member")
+                                \nIf you have already bought the membership try again later or contact any committee member", ephemeral=True)
 
 
 # gives message author role coresponding to MEMBERSHIP_ROLE_ID
