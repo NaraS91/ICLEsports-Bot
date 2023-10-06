@@ -43,7 +43,7 @@ class DiscordDB:
       return
     text_channel = [x for x in self.category.text_channels if x.name == key][0]
     await text_channel.delete()
-    self.db[key] = None
+    del(self.db[key])
 
   async def remove(self, key, dataPoint):
     if key not in self.db or dataPoint not in self.db[key]:
@@ -76,10 +76,10 @@ class DiscordDB:
       if dataPoint in data:
         return
       text_channel = [x for x in self.category.text_channels if x.name == key][0]
-      last_message = await text_channel.fetch_message(text_channel.last_message_id)
-      if len(last_message.content) + len(dataPoint) + 1 >= 2000:
-        await text_channel.send(dataPoint + '\n')
-      else:
-        await last_message.edit(content=last_message.content + '\n' + dataPoint)
+      async for message in text_channel.history(limit=1):
+        if len(message.content) + len(dataPoint) + 1 >= 2000:
+          await text_channel.send(dataPoint + '\n')
+        else:
+          await message.edit(content=message.content + '\n' + dataPoint)
       self.db[key] += [dataPoint]
 
