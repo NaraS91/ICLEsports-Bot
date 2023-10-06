@@ -9,7 +9,8 @@ import giphy_client
 import re
 import requests
 import commands.role_menu as rm
-from DiscordClient import DicordClient
+from DiscordClient import DiscordClient
+from db.DiscordDB import DiscordDB
 from utils.league_utils import extract_champions
 from discord.utils import get
 from discord import Member, app_commands
@@ -31,6 +32,7 @@ MAIN_GUILD_ID = int(os.environ.get("MAIN_GUILD_ID"))
 QUARANTINE_CHANNEL_ID = int(os.environ.get("QUARANTINE_CHANNEL_ID"))
 ROLE_MENU_CHANNEL = int(os.environ.get("ROLE_MENU_CHANNEL"))
 REDIS_URL = os.environ.get("REDIS_URL")
+DB_ID = os.environ.get("DB_ID")
 SELF_PROMO = os.environ.get("SELF_PROMO")
 SOCIETY_API_KEY = os.environ.get("SOCIETY_API_KEY")
 SOCIETY_API_KEY2 = os.environ.get("SOCIETY_API_KEY2")
@@ -39,7 +41,7 @@ UNION_API_ENDPOINT = os.environ.get("UNION_API_ENDPOINT")
 
 command_guilds = [discord.Object(id = MAIN_GUILD_ID)]
 
-client = DicordClient(ROLE_MENU_CHANNEL, REDIS_URL)
+client = DiscordClient(ROLE_MENU_CHANNEL)
 admin_tree_commands = []
 
 # gify settings
@@ -51,10 +53,12 @@ fmt = 'json'  # response format
 
 league_champions = list()
 tree = app_commands.CommandTree(client)
+db = DiscordDB(DB_ID, client)
 
 @client.event
 async def on_ready():
     league_champions = extract_champions()
+    await db.sync()
     await rm.load_role_menus(client, ROLE_MENU_CHANNEL)
     await tree.sync(guild = discord.Object(id = MAIN_GUILD_ID))
     print(f'{client.user} has connected to Discord!')
@@ -357,7 +361,7 @@ async def give_promotions_permission(interaction: discord.Interaction, id: str):
         await interaction.response.send_message("id should be a number")
         return
 
-    await client.db.append("allowed", id)
+    await db.append("allowed", id)
     await interaction.response.send_message("permission given")
 admin_tree_commands.append(discord.app_commands.Command(name = "give_promo_permission", description="allows the user to post in self-promotion", callback=give_promotions_permission))
   
@@ -368,20 +372,20 @@ async def remove_promotions_permission(interaction: discord.Interaction, id: str
         await interaction.response.send_message("id should be a number")
         return
     
-    await client.db.remove("allowed", id)
+    await db.remove("allowed", id)
     await interaction.response.send_message("permission removed")
 admin_tree_commands.append(discord.app_commands.Command(name = "remove_promo_permission", description="removes the user's privillage to post in self-promotion", callback=remove_promotions_permission))
 
 
 async def clear_promotions_permissions(interaction: discord.Interaction):
-    await client.db.clear("allowed")
+    await db.clear("allowed")
     await interaction.response.send_message("cleared permissions")
 admin_tree_commands.append(discord.app_commands.Command(name = "clear_promo_permissions", description="removes all given permissions to post in the self-promo.", callback=clear_promotions_permissions))
 
 
 async def show_promotions_permissions(interaction: discord.Interaction):
-    perms = await client.db.get("allowed")
-    await interaction.response.send_message(perms)
+    perms = await db.get("allowed")
+    await interaction.response.send_message(perms if perms != None else "No perms")
 admin_tree_commands.append(discord.app_commands.Command(name = "show_promo_permissions", description="show all users with explicit permission given to post in self promo", callback=show_promotions_permissions))
 
 def quote_args_to_array(args):
@@ -449,7 +453,7 @@ def renew_champions():
 
 async def self_promo_commands(content, message):
     author = message.author
-    allowed = await client.db.get("allowed")
+    allowed = await db.get("allowed")
     if allowed != None and str(author.id) in allowed:
         return
     
@@ -467,7 +471,7 @@ async def filter_message(message):
         await client.update_members(message.guild)
     author = client.get_member(message.author.id, message.guild.id)
     joinDate = author.joined_at
-    delta = datetime.utcnow - joinDate
+    delta = datetime.now(timezone.utc) - joinDate
     if (delta < timedelta(hours=2) and (len(message.attachments) > 0 or len(message.embeds) or "http" in message.content)):
         channel = client.get_channel(QUARANTINE_CHANNEL_ID)
         await channel.send(content=f'author id: {author.id} \n author name: {author.name} \n message:\n {message.content}')
