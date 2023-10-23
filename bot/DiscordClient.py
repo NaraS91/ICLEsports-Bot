@@ -4,7 +4,7 @@ import commands.role_menu as rm
 
 class DiscordClient(discord.Client):
   def __init__(self, role_menu_channel_id):
-    intents = discord.Intents(messages=True, guilds=True, members=True, reactions=True)
+    intents = discord.Intents(messages=True, guilds=True, members=True, reactions=True, message_content=True)
     super().__init__(intents= intents)
     self.rm_channel_id = role_menu_channel_id
     self.members = dict()

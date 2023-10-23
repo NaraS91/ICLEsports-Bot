@@ -472,7 +472,7 @@ async def filter_message(message):
     author = client.get_member(message.author.id, message.guild.id)
     joinDate = author.joined_at
     delta = datetime.now(timezone.utc) - joinDate
-    if (delta < timedelta(hours=2) and (len(message.attachments) > 0 or len(message.embeds) or "http" in message.content)):
+    if (delta < timedelta(hours=2) and (len(message.attachments) > 0 or len(message.embeds) > 0 or "http" in message.content)):
         channel = client.get_channel(QUARANTINE_CHANNEL_ID)
         await channel.send(content=f'author id: {author.id} \n author name: {author.name} \n message:\n {message.content}')
         if len(message.embeds) > 0:
