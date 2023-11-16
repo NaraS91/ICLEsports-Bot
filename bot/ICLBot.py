@@ -407,10 +407,6 @@ async def register(interaction: discord.Interaction, shortcode: str):
     resp = requests.get(f'{UNION_API_ENDPOINT}/CSP/{CENTRE_CODE}/reports/members',
                         auth=(SOCIETY_API_KEY, SOCIETY_API_KEY))
 
-    # 2nd society members
-    resp2 = requests.get(f'{UNION_API_ENDPOINT}/CSP/{CENTRE_CODE2}/reports/members',
-                         auth=(SOCIETY_API_KEY2, SOCIETY_API_KEY2))
-
     role_assigned = False
 
     # checks if API response is without error
@@ -420,9 +416,25 @@ async def register(interaction: discord.Interaction, shortcode: str):
                 role_assigned = True
                 await give_role(interaction.user.id)
 
-    if (not role_assigned) and resp2.status_code == 200:
-        for member in resp2.json():
-            if member['Login'] == shortcode:
+    if role_assigned:
+        await interaction.response.send_message("role was assigned successfully", ephemeral=True)
+    else:
+        await interaction.response.send_message("Could not find your membership, it's available to buy here: https://www.imperialcollegeunion.org/activities/a-to-z/gaming-and-esports \
+                                \nIf you have already bought the membership try again with your order number instead (\\registerNo). If it still does not solve the problem try again later or contact any committee member", ephemeral=True)
+
+# dms message author with further instructions
+@tree.command(name = "register_no", description="register to get a membership role using your order number", guilds=command_guilds)
+async def register_no(interaction: discord.Interaction, order_no: int):
+    # response contains all students with a valid membership
+    resp = requests.get(f'{UNION_API_ENDPOINT}/CSP/{CENTRE_CODE}/reports/members',
+                        auth=(SOCIETY_API_KEY, SOCIETY_API_KEY))
+
+    role_assigned = False
+
+    # checks if API response is without error
+    if resp.status_code == 200:
+        for member in resp.json():
+            if member['OrderNo'] == order_no:
                 role_assigned = True
                 await give_role(interaction.user.id)
 
@@ -431,7 +443,6 @@ async def register(interaction: discord.Interaction, shortcode: str):
     else:
         await interaction.response.send_message("Could not find your membership, it's available to buy here: https://www.imperialcollegeunion.org/activities/a-to-z/gaming-and-esports \
                                 \nIf you have already bought the membership try again later or contact any committee member", ephemeral=True)
-
 
 # gives message author role coresponding to MEMBERSHIP_ROLE_ID
 async def give_role(id):
