@@ -487,15 +487,7 @@ async def filter_message(message):
     if ((delta < timedelta(hours=24) and "@everyone" in message.content)):
         await message.delete()
         author.ban(reason="New users cannot ping everyone")
-<<<<<<< Updated upstream
-        await channel.send(content=f'author id, {author.id}, banned for pinging everyone in the first 24 hours of joining')
-=======
-<<<<<<< HEAD
         await channel.send(content=f'author id: {author.id} \nauthor name: {author.name} \nauthor profile: <@{author.id}> \nchannel: <{"#"}{message.channel.id}> \nBanned for pinging everyone in the first 24 hours of joining')
-=======
-        await channel.send(content=f'author id, {author.id}, banned for pinging everyone in the first 24 hours of joining')
->>>>>>> 04d7c58c36767a32bd342a37bccca410340d96c7
->>>>>>> Stashed changes
     elif (delta < timedelta(hours=2) and (len(message.attachments) > 0 or len(message.embeds) > 0 or "http" in message.content)):
         await channel.send(content=f'author id: {author.id} \nauthor name: {author.name} \nauthor profile: <@{author.id}> \nchannel: <{"#"}{message.channel.id}> \nmessage: \n{message.content}')
         if len(message.embeds) > 0:
