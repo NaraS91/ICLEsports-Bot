@@ -484,10 +484,19 @@ async def filter_message(message):
     joinDate = author.joined_at
     delta = datetime.now(timezone.utc) - joinDate
     channel = client.get_channel(QUARANTINE_CHANNEL_ID)
-    if ((delta < timedelta(hours=24) and "@everyone" in message.content)):
+
+    keywords = ['giving away']
+    
+    # @ everyone or here ping within 24hr
+    if ((delta < timedelta(hours=24) and ("@everyone" in message.content or "@here" in message.content))):
         await message.delete()
-        author.ban(reason="New users cannot ping everyone")
-        await channel.send(content=f'author id: {author.id} \nauthor name: {author.name} \nauthor profile: <@{author.id}> \nchannel: <{"#"}{message.channel.id}> \nBanned for pinging everyone in the first 24 hours of joining')
+        author.ban(reason="New users cannot ping everyone or here")
+        await channel.send(content=f'author id: {author.id} \nauthor name: {author.name} \nauthor profile: <@{author.id}> \nchannel: <{"#"}{message.channel.id}> \nBanned for pinging everyone or here in the first 24 hours of joining \nmessage: \n{message.content.replace('@everyone', 'everyone').replace('@here', 'here')}')
+    # deletes messages with keywords within 24hr
+    elif ((delta < timedelta(hours=24) and (any(keyword in message.content for keyword in keywords)))):
+        await message.delete()
+        await channel.send(content=f'author id: {author.id} \nauthor name: {author.name} \nauthor profile: <@{author.id}> \nchannel: <{"#"}{message.channel.id}> \nBanned for using keywords in the first 24 hours of joining \nmessage: \n{message.content}'))
+    # links or images within 2hr
     elif (delta < timedelta(hours=2) and (len(message.attachments) > 0 or len(message.embeds) > 0 or "http" in message.content)):
         await channel.send(content=f'author id: {author.id} \nauthor name: {author.name} \nauthor profile: <@{author.id}> \nchannel: <{"#"}{message.channel.id}> \nmessage: \n{message.content}')
         if len(message.embeds) > 0:
