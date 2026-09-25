@@ -487,7 +487,7 @@ async def filter_message(message):
 
     keywords = ['giving away']
     
-    # @ everyone or here ping within 24hr
+    # @ everyone or here ping within 24hr 
     if ((delta < timedelta(hours=24) and ("@everyone" in message.content or "@here" in message.content))):
         await message.delete()
         author.ban(reason="New users cannot ping everyone or here")
