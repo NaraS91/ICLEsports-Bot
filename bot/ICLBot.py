@@ -491,7 +491,7 @@ async def filter_message(message):
     if ((delta < timedelta(hours=24) and ("@everyone" in message.content or "@here" in message.content))):
         await message.delete()
         author.ban(reason="New users cannot ping everyone or here")
-        await channel.send(content=f'author id: {author.id} \nauthor name: {author.name} \nauthor profile: <@{author.id}> \nchannel: <{"#"}{message.channel.id}> \nBanned for pinging everyone or here in the first 24 hours of joining \nmessage: \n{message.content.replace('@everyone', 'everyone').replace('@here', 'here')}')
+        await channel.send(content=f'author id: {author.id} \nauthor name: {author.name} \nauthor profile: <@{author.id}> \nchannel: <{"#"}{message.channel.id}> \nBanned for pinging everyone or here in the first 24 hours of joining \nmessage: \n{message.content.replace("@everyone", "everyone").replace("@here", "here")}')
     # deletes messages with keywords within 24hr
     elif ((delta < timedelta(hours=24) and (any(keyword in message.content for keyword in keywords)))):
         await message.delete()
