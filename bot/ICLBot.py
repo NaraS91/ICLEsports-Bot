@@ -495,7 +495,7 @@ async def filter_message(message):
     # deletes messages with keywords within 24hr
     elif ((delta < timedelta(hours=24) and (any(keyword in message.content for keyword in keywords)))):
         await message.delete()
-        await channel.send(content=f'author id: {author.id} \nauthor name: {author.name} \nauthor profile: <@{author.id}> \nchannel: <{"#"}{message.channel.id}> \nBanned for using keywords in the first 24 hours of joining \nmessage: \n{message.content}'))
+        await channel.send(content=f'author id: {author.id} \nauthor name: {author.name} \nauthor profile: <@{author.id}> \nchannel: <{"#"}{message.channel.id}> \nBanned for using keywords in the first 24 hours of joining \nmessage: \n{message.content}')
     # links or images within 2hr
     elif (delta < timedelta(hours=2) and (len(message.attachments) > 0 or len(message.embeds) > 0 or "http" in message.content)):
         await channel.send(content=f'author id: {author.id} \nauthor name: {author.name} \nauthor profile: <@{author.id}> \nchannel: <{"#"}{message.channel.id}> \nmessage: \n{message.content}')
